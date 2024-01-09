@@ -1,17 +1,26 @@
-const int motionSensorPin = 3;
-const int motionSensorLedPin = 12;
+const int motionSensorPin = 2;
+const int motionLedPin = LED_BUILTIN;
 
 void setup() {
   Serial.begin(115200);
   pinMode(motionSensorPin, INPUT);
-  pinMode(motionSensorLedPin, OUTPUT);
-
+  pinMode(motionLedPin, OUTPUT);
 }
 
 void loop() {
-  int value = digitalRead(motionSensorPin);
-  digitalWrite(motionSensorLedPin, value);
+  
+  if (motionSensed() == true){
+    digitalWrite(motionLedPin, HIGH);
+  }
+  else if (motionSensed() == false){
+    digitalWrite(motionLedPin, LOW);
+  }
+  
+  //Serial.println(motionSensed());
+  //delay(200);
+}
 
-  Serial.println(value);
-  delay(100);
+bool motionSensed(){
+  bool motionSens = digitalRead(motionSensorPin);
+  return motionSens;
 }
