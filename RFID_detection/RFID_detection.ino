@@ -3,6 +3,7 @@
 //Lav keyboard input til først at definere mode
 //Hvis write brug keyboard til at læse hvad der skal skrives
 //Find ud af hvorfor den kun kører en gang
+//https://github.com/miguelbalboa/rfid/issues/323#issuecomment-323072804
 
 #include <SPI.h>
 #include <MFRC522.h> 
@@ -84,7 +85,7 @@ void readID(bool *a, char* n){
   }
   
 
-  mfrc522.PICC_HaltA(); //Prevents reditection of a card
+  mfrc522.PICC_HaltA(); //Prevents redetection of a card
 
 }
 
@@ -117,11 +118,12 @@ void writeDataToKey(byte initials[2]){
 	}
   //3, 7, 11, 15, 19, 23, 27, 31, 35, 39, 43, 47, 51, 55, 59, 63 
   //IS OFF LIMITS AND WILL RUIN A SECTOR ON A CARD IF USED!
-  int blockNumber = 16;
+  int blockNumber = 16; //Number of the block that will be written to
+
   //Authentication check for writing
   status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, blockNumber, &key, &(mfrc522.uid));
 
-
+  //Check for success of authentication
   if(status != MFRC522::STATUS_OK){
     Serial.println("Error in authentication");
     return;
@@ -130,7 +132,10 @@ void writeDataToKey(byte initials[2]){
     Serial.println("Authentication succesful");
   }
 
-  status = mfrc522.MIFARE_Write(blockNumber, initials, 16);
+  
+  status = mfrc522.MIFARE_Write(blockNumber, initials, 16); //Try to write data
+
+  //Check for succes of write
   if(status != MFRC522::STATUS_OK){
     Serial.println("Failed writing data");
     return;
@@ -146,13 +151,13 @@ void writeDataToKey(byte initials[2]){
 void readDataFromKey(char *n){
   //3, 7, 11, 15, 19, 23, 27, 31, 35, 39, 43, 47, 51, 55, 59, 63 
   //IS OFF LIMITS AND WILL RUIN A SECTOR ON A CARD IF USED!
-  int blockNumber = 16;
-  char tempName[18];
+  int blockNumber = 16; //Number of the block that will be written to
+  char tempData[18];
 
   //Authentication check for writing
   status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, blockNumber, &key, &(mfrc522.uid));
 
-
+  //Check for success of authentication
   if(status != MFRC522::STATUS_OK){
     Serial.println("Error in authentication");
     return;
@@ -161,24 +166,25 @@ void readDataFromKey(char *n){
     Serial.println("Authentication succesful");
   }
 
-  status = mfrc522.MIFARE_Read(blockNumber, tempName, &bufferLength);
+
+  status = mfrc522.MIFARE_Read(blockNumber, tempData, &bufferLength); //Try to read from the wanted block and store it in tempData
+  
+  //Check for succes of read
   if (status != MFRC522::STATUS_OK)
   {
-    Serial.print("Reading failed: ");
-    Serial.println(mfrc522.GetStatusCodeName(status));
+    Serial.print("Failed to read data");
     return;
   }
   else
   {
-    Serial.println("Block was read successfully");  
-  }
-  for(int i = 0; i < 18; i++){
-    *n = tempName[i];
-    n++;
+    Serial.println("Data was read succesfully");  
   }
 
-  //strcpy(*n,tempName);
-  
+  //Copy data from temp variable to wanted variable
+  for(int i = 0; i < 18; i++){
+    *n = tempData[i];
+    n++;
+  }
 
   return;
 
