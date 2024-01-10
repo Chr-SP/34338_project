@@ -2,9 +2,7 @@
 const int IndoorLEDPin = 9; //
 const int OutdoorLEDPin = 8;
 
-int lightLevel;
-int Light;
-int LightThresholde = 20; //A threshold that controls when light level is low
+int LightThreshold = 20; //A threshold that controls when light level is low
 
 void setup() {
   Serial.begin(115200);
@@ -22,16 +20,16 @@ void loop() {
 // It also checks the light level and turns on lights gradually dependent of how dark it is.
 
 void LightsystemIn(int Position, bool Movement){
-  lightLevel = analogRead(A0); //reads light level.
-  float voltage = lightLevel * (5.0 / 1023.0); // truns the signal into digital
-  int val = voltage * 100; //just a factor.
+  int lightLevel = analogRead(A0); //reads light level.
+  float voltage = (float)lightLevel * (5.0 / 1023.0); // truns the signal into digital
+  int val = (int)voltage * 100; //just a factor.
 
-  if(val > LightThresholde){ //when there is light (light level is higher than threshold), then turn off LED
+  if(val > LightThreshold){ //when there is light (light level is higher than threshold), then turn off LED
     digitalWrite(IndoorLEDPin,LOW);
   }
-  else if(val < LightThresholde){ // If it is dark (light level is less than threshold) turn on LED an amout dependet on how dark it is.
+  else if(val < LightThreshold){ // If it is dark (light level is less than threshold) turn on LED an amout dependet on how dark it is.
    if(Position == 0 && Movement ==true){
-      Light = 100-val;
+      int Light = 100-val;
       analogWrite(IndoorLEDPin,(Light));
       //Serial.println(Light);
     }
@@ -40,11 +38,11 @@ void LightsystemIn(int Position, bool Movement){
 
 //This function turns on light outside if there is movement and it is dark.
 void LightsystemOut(bool Movement){
-  lightLevel = analogRead(A0); 
-  float voltage = lightLevel * (5.0 / 1023.0);
-  int val = voltage * 100;
+  int lightLevel = analogRead(A0); 
+  float voltage = (float)lightLevel * (5.0 / 1023.0);
+  int val = (int)voltage * 100;
 
-  if(val < LightThresholde && Movement == true){ // If the light level is lower then threshold and movement, turn lights on.
+  if(val < LightThreshold && Movement == true){ // If the light level is lower then threshold and movement, turn lights on.
     digitalWrite(OutdoorLEDPin,HIGH);
   }
   else{ //else, turn off lights 
