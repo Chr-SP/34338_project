@@ -1,8 +1,13 @@
 #include <Wire.h>
+#include <Servo.h>
+Servo myservo;
 
-const int IndoorLEDPin = 11; // PVM
-const int OutdoorLEDPin = 12;
-volatile char input;
+
+const int IndoorLEDPin = 11; // D11 - PVM
+const int OutdoorLEDPin = 12; // D12
+const int ServoMoterPin = 3; // D3
+
+int positionCheck = 0; // initial servo position
 
 void setup() {
   Serial.begin(115200);
@@ -12,6 +17,8 @@ void setup() {
 
   pinMode(IndoorLEDPin, OUTPUT);
   pinMode(OutdoorLEDPin, OUTPUT);
+  myservo.attach(ServoMoterPin);
+  myservo.write(-90); // turns servo to the right position
 }
 
 void loop() {
@@ -30,26 +37,26 @@ char* buildMessage(int howMany){
 */
 
 void reader(int howMany){
-  char strMessage[20] = "";
+  char strMessage[3] = {0,0};
   for(int i=0; i<howMany; i++){
-    char tempChar[2] = {Wire.read()};
-    strcat(strMessage,tempChar);
+    strMessage[i] = Wire.read();
   }
 
-  Serial.println(strMessage);
+  // Serial.print(strMessage[0]);
+  // Serial.println((int)strMessage[1]);
 
-  switch (strtok(strMessage,"-")) {     // ensuring both upper and lower case works
-      case 'insideLEDOff':
-        digitalWrite(IndoorLEDPin,LOW);;  // if the input is 'a', LED a turns on
+  switch (strMessage[0]) {     // ensuring both upper and lower case works
+      case 'a': // Inside LED
+        analogWrite(IndoorLEDPin,(int)strMessage[1]);  // if the input is 'a', LED a turns on
         break;
 
-      case 'insideLEDOn':
-        float light = strMessage[12]
-        analogWrite(IndoorLEDPin,(light));
+      case 'b': // Outside LED
+        digitalWrite(OutdoorLEDPin,(int)strMessage[1]);
         break;
 
-      case 'c':
-        
+      case 'c': // Servo
+        lockChange((int)strMessage[1]);
+        Serial.println((int)strMessage[1]);
         break;
 
       case 'd':
@@ -77,6 +84,22 @@ void request(){
 
 */
 
+int lockChange(int lock){
+  //position == 0 open
+  //position == 1 locked
+
+  if(positionCheck!=lock){ // Checks if the door is already open or locked and does not turn if the input is the same as position
+    if (lock == 0){ //Opens the door.
+    myservo.write(-180);
+    positionCheck = 0;
+    }
+    if(lock == 1){ //Lockes the door.
+      myservo.write(180);
+      positionCheck = 1;
+    }
+  }
+  return lock;
+}
 
 
 

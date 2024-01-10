@@ -1,29 +1,45 @@
 #include <Wire.h>
 
+
 const int lightSensorPin = A0;
+const int motionSensorIndoorPin = D3;
+const int motionSensorOutdoorPin = D4;
 
-int lightThreshold = 20; //A threshold that controls when light level is low
 
+int lightThreshold = 100; //A threshold that controls when light level is low
+int position = 0;
 
-char toSend[20] = "0"; // the char defining a command to send to slave
+char toSend[3] = {0,0}; // the char defining a command to send to slave
 
 void setup() {
   Serial.begin(115200);
   Wire.begin(D2,D1); // SDA, SCL
 
   pinMode(lightSensorPin, INPUT_PULLUP); // light sensor
+  pinMode(motionSensorIndoorPin, INPUT);
+  pinMode(motionSensorOutdoorPin, INPUT);
 }
 
 void loop() {
-  int position = 0;
-  movementSensed = true;
-  lightsystemIn(int position, bool movementSensed)
+  char toSend[3] = {0,0};
+
+  bool motionSensedIndoor = motionSensed(motionSensorIndoorPin);
+  bool motionSensedOutdoor = motionSensed(motionSensorOutdoorPin);
 
 
+  lightsystemIndoor(position, motionSensedIndoor);
+  lightsystemOutdoor(motionSensedOutdoor);
 
-  sendMessage(toSend);
-  delay(2000);
 
+  //sendMessage(toSend);
+  delay(20);
+
+
+  while (Serial.available() >0){
+    int servoPosistion = Serial.parseInt();
+    servoLock(servoPosistion);
+    delay(10);
+  }
 
   /*
   Wire.beginTransmission(11);
@@ -52,32 +68,58 @@ void loop() {
 }
 
 
-void sendMessage(char toSend[]){
+void sendMessage(char toSend[]){ // transmit command to slave
   Wire.beginTransmission(11);
   Wire.write(toSend);
   Wire.endTransmission();
 }
 
+void lightsystemIndoor(int position, bool motionSensed){
+  int lightLevel = analogRead(lightSensorPin);
 
-int lightLevelSensed(){ // computes reading of light sensor
-  int lightLevel = analogRead(A0); //reads light level.
-  float voltage = (float)lightLevel * (5.0 / 1023.0); // truns the signal into digital
-  int val = (int)voltage * 100; //just a factor.
-  return val;
-}
-
-
-void lightsystemIn(int position, bool movementSensed){
-  float lightLevel = (float)lightLevelSensed();
-
-  if(lightLevel > lightThreshold){ //when there is light (light level is higher than threshold), then turn off LED
-    char toSend[20] = "insideLEDOff";
-    sendMessage(char toSend[]);
+  if((lightLevel > lightThreshold) || (motionSensed==false)){ //when there is light (light level is higher than threshold), then turn off LED
+    toSend[0] = 'a';
+    toSend[1] = 0;
+    sendMessage(toSend);
   }
-  else if((position == 0) && (movementSensed==true)){ // If it is dark (light level is less than threshold) turn on LED an amout dependet on how dark it is.
-    char toSend[20] = "insideLEDOn";
-    char light[2] = {(char)(lightLevel/500)}; // SKAL SKALERES TIL AT VÆRE MELLEM 0-1
-    strcat(toSend, light);
-    sendMessage(char toSend[]);
+  else if((position == 0) && (motionSensed==true)){ // If it is dark (light level is less than threshold) turn on LED an amout dependet on how dark it is.
+    int light = 255 - lightLevel * 254 / lightThreshold; // SKAL SKALERES YDERLIGERE
+    toSend[0] = 'a';
+    toSend[1] = light; // light
+    sendMessage(toSend);
   }
 }
+
+void lightsystemOutdoor(bool motionSensed){
+  int lightLevel = analogRead(lightSensorPin);
+
+  if ((lightLevel > lightThreshold) || (motionSensed == false)){
+    toSend[0] = 'b';
+    toSend[1] = 0; // Outside LED off
+    sendMessage(toSend);
+  }
+  else{
+    toSend[0] = 'b';
+    toSend[1] = 1; // Outside LED on
+    sendMessage(toSend);
+  }
+}
+
+bool motionSensed(int whichMotionSensor){
+  bool motionSensed = digitalRead(whichMotionSensor);
+  return motionSensed;
+}
+
+void servoLock(int lock){
+  if (lock==1){
+    toSend[0] = 'c';
+    toSend[1] = 1; // Lock the servo
+    sendMessage(toSend);
+  }
+  else{
+    toSend[0] = 'c';
+    toSend[1] = 0; // Unlock the servo
+    sendMessage(toSend);
+  }
+}
+
