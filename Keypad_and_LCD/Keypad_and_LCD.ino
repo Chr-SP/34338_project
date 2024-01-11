@@ -33,7 +33,7 @@ byte colPins[KEYPADCOLS] = {C1, C2, C3};
 Keypad keypad_door = Keypad(makeKeymap(keys), rowPins, colPins, KEYPADROWS, KEYPADCOLS);
 
 
-char password[4] = {0,0,0,0}; // placement for password.
+char password[4] = {0,0,0,0}; // replacement for password.
 int  position = 0;
 char truePassword[4] = {'9','1','1', 0};
 int openLock = 0;

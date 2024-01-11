@@ -1,13 +1,13 @@
 #include <Wire.h>
 
-
 const int lightSensorPin = A0;
-const int motionSensorIndoorPin = D3;
-const int motionSensorOutdoorPin = D4;
+const int motionSensorIndoorPin = D0;
+const int motionSensorOutdoorPin = D3;
+
 
 
 int lightThreshold = 100; //A threshold that controls when light level is low
-int position = 0;
+int position = 0; // position of the servo / lock
 
 char toSend[3] = {0,0}; // the char defining a command to send to slave
 
@@ -34,10 +34,12 @@ void loop() {
   //sendMessage(toSend);
   delay(20);
 
-
+  
   while (Serial.available() >0){
     int servoPosistion = Serial.parseInt();
     servoLock(servoPosistion);
+    
+
     delay(10);
   }
 
