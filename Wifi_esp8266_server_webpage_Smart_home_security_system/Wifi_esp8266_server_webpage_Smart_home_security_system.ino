@@ -2,19 +2,15 @@
   Smart home security sistem WiFi
 
   The purpes of this program is to create a server and connect a ESP8266 to it
-  so you are able to control a security system 
+  so you are able to control a security system at home from a web page.
+  It controles the door lock, the alarm, if RFID card or keypad is used and witch user is aloud in.
+  It is also possible to change the 3 digit password for the keypad.
 
-  Reads the voltage from a LM35 temperature sensor
-  and converts it to a digital voltage value via the ADC.
-  Then the voltage value gets scaled to match the LM35's 10mV/°C
-
-  Created 5-1-2024
+  Created 8-1-2024
   by Jesper B.K.M. Hansen
 
 */
-
-
-#include <ESP8266WiFi.h>
+#include <ESP8266WiFi.h>        
 #include <WiFiClient.h>
 #include <ESP8266WiFiMulti.h>  // Include the Wi-Fi-Multi library
 #include <ESP8266WebServer.h>  // Include the WebServer library
@@ -25,20 +21,18 @@ ESP8266WiFiMulti wifiMulti;
 ESP8266WebServer server(80);
 
 const uint8_t led = D2;
-uint8_t door_on_off = 1;
-uint8_t keypad_RFID = 1;
-uint8_t alarm_on_off = 0;
-
+uint8_t door_on_off = 1;  // control variable for door lock
+uint8_t keypad_RFID = 1;  // control variable to switch between RFID and keypad (1 fot RFID, 0 for keypad)
+uint8_t alarm_on_off = 0; // control variable for the alarm (0 for off)
+/* Variable text strings used in HTML code*/
 String door_text = " Door is locked";
 String RFID_text = " RFID is active";
 String user_text = " User 1 is active";
 String alarm_text = " Alarm is off";
 String new_password = "000";
 
-
-
-char password[4] = { 0, 0, 0 };
-
+char password[4] = { 0, 0, 0 }; // Password for keypad
+/* Handle functions for the server*/
 void handleRoot();
 void handleNotFound();
 void handle_door();
@@ -53,10 +47,7 @@ void handle_password();
 void setup() {
   Serial.begin(115200);
   delay(10);
-
-  pinMode(led, OUTPUT);
-  digitalWrite(led, 1);
-
+/* Server */
   server.on("/LOCK_DOOR", HTTP_POST, handle_door);
   server.on("/RFID", HTTP_POST, handle_RFID_keypad);
   server.on("/User1", HTTP_POST, handle_user1);
