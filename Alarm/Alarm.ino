@@ -1,11 +1,8 @@
-
 int BuzzerPin = 9;
 const byte ledblue = 3;
 const byte ledred = 5;
 bool Movement = true;
 int Lock ;
-
-
 
 void setup() {
   Serial.begin(115200);
