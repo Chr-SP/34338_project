@@ -26,7 +26,7 @@ byte validAccess[4][4] = {{0x63, 0xC8, 0xA0, 0x34},
 
 bool access;
 char name[18];
-char bufferLength = 18;
+
 
 
 void setup() {
@@ -40,15 +40,14 @@ void setup() {
 }
 
 void loop() {
-  
-  //writeDataToKey(0xFF);
+  //writeDataToKey("CP");
   readID(&access, &name[0]);
 
 }
 
 void readID(bool *a, char* n){
   byte UID[4];
-
+  
   // Reset the loop if no new card present on the sensor/reader
 	if ( ! mfrc522.PICC_IsNewCardPresent()) {
 		return;
@@ -57,7 +56,7 @@ void readID(bool *a, char* n){
 	if ( ! mfrc522.PICC_ReadCardSerial()) {
 		return;
 	}
-
+  
   //Read all values of the UID from a card and store them in UID array
   for(int i = 0 ; i < 4; i++){
     UID[i] = mfrc522.uid.uidByte[i];
@@ -66,26 +65,26 @@ void readID(bool *a, char* n){
 
   *a = checkAccess(&UID[0]);
 
-  //Print function for debugging. (COMMENT OUT BEFORE COMMIT!)
   
+  
+  if(access == true){
+    readDataFromKey(n);
+  }
+
+  //Print function for debugging.
+  /*
   for(int i = 0 ; i < 4; i++){
     Serial.print(UID[i],HEX);
     Serial.print(" ");
   }
   Serial.println(" Card has been read");
 
-  
-  if(access == true){
-    readDataFromKey(n);
-    Serial.print("Access granted. Welcome home");
-    Serial.println(name);
-  }
-  else{
-    Serial.println("Access Denied");
-  }
-  
+  Serial.println(name);
+  */
 
   mfrc522.PICC_HaltA(); //Prevents redetection of a card
+
+  mfrc522.PCD_StopCrypto1();
 
 }
 
@@ -108,6 +107,7 @@ bool checkAccess(byte *UID){
 }
 
 void writeDataToKey(byte initials[2]){
+
   // Reset the loop if no new card present on the sensor/reader
 	if ( ! mfrc522.PICC_IsNewCardPresent()) {
 		return;
@@ -116,6 +116,7 @@ void writeDataToKey(byte initials[2]){
 	if ( ! mfrc522.PICC_ReadCardSerial()) {
 		return;
 	}
+  
   //3, 7, 11, 15, 19, 23, 27, 31, 35, 39, 43, 47, 51, 55, 59, 63 
   //IS OFF LIMITS AND WILL RUIN A SECTOR ON A CARD IF USED!
   int blockNumber = 16; //Number of the block that will be written to
@@ -125,26 +126,32 @@ void writeDataToKey(byte initials[2]){
 
   //Check for success of authentication
   if(status != MFRC522::STATUS_OK){
-    Serial.println("Error in authentication");
+    //Serial.println("Error in authentication");
     return;
   }
+  /*
   else{
     Serial.println("Authentication succesful");
   }
+  */
 
   
   status = mfrc522.MIFARE_Write(blockNumber, initials, 16); //Try to write data
 
   //Check for succes of write
   if(status != MFRC522::STATUS_OK){
-    Serial.println("Failed writing data");
+    //Serial.println("Failed writing data");
     return;
   }
+  /*
   else{
     Serial.println("Data was written succesfully");
   }
+  */
 
   mfrc522.PICC_HaltA(); //Prevents reditection of a card
+
+  mfrc522.PCD_StopCrypto1();
 
 }
 
@@ -153,39 +160,40 @@ void readDataFromKey(char *n){
   //IS OFF LIMITS AND WILL RUIN A SECTOR ON A CARD IF USED!
   int blockNumber = 16; //Number of the block that will be written to
   char tempData[18];
+  char bufferLength = 18; 
 
   //Authentication check for writing
   status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, blockNumber, &key, &(mfrc522.uid));
 
   //Check for success of authentication
   if(status != MFRC522::STATUS_OK){
-    Serial.println("Error in authentication");
+    //Serial.println("Error in authentication");
     return;
   }
+  /*
   else{
     Serial.println("Authentication succesful");
   }
+  */
 
 
   status = mfrc522.MIFARE_Read(blockNumber, tempData, &bufferLength); //Try to read from the wanted block and store it in tempData
-  
+  bufferLength = 18;
   //Check for succes of read
   if (status != MFRC522::STATUS_OK)
   {
-    Serial.print("Failed to read data");
+    //Serial.print("Failed to read data");
     return;
   }
-  else
-  {
+  /*
+  else{
     Serial.println("Data was read succesfully");  
   }
+  */
 
   //Copy data from temp variable to wanted variable
   for(int i = 0; i < 18; i++){
     *n = tempData[i];
     n++;
   }
-
-  return;
-
 }
