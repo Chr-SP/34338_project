@@ -8,10 +8,11 @@ const int ServoMoterPin = 9;
 void setup() {
   Serial.begin(115200);
   myservo.attach(ServoMoterPin);
-  myservo.write(-90); // turns it 
+  myservo.write(-90); // turns it to the right position
 }
 
 int PositionCheck = 0;
+
 
 int Servomotoer(int Position){
   //position == 0 open
@@ -29,22 +30,20 @@ int Servomotoer(int Position){
       delay(10);
     }
   }
-  else if(PositionCheck==Position){
-  }
   return Position;
 }
 
-int ServoPosistion;
+//int ServoPosistion; //used to test code
 
 void loop() {
 
-/*
-  This code uses the Serial Monitor to open or lock the door.
-  0 is open and 1 is locked.
+  //This code uses the Serial Monitor to open or lock the door.
+  //0 is open and 1 is locked.
+  /*
   while (Serial.available() >0){
     ServoPosistion = Serial.parseInt();
     Servomotoer(ServoPosistion);
     delay(10);
   }
-*/
+  */
 }
