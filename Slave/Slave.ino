@@ -5,7 +5,7 @@
 #include <LiquidCrystal_I2C.h>
 
 Servo myservo;
-LiquidCrystal_I2C lcd(0x27, 16,2);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 const int IndoorLEDPin = 5; // D5 - PVM
 const int OutdoorLEDPin = 4; // D4
@@ -35,13 +35,13 @@ byte rowPins[KEYPADROWS] = {R1, R2, R3, R4};
 byte colPins[KEYPADCOLS] = {C1, C2, C3};
 Keypad keypad_door = Keypad(makeKeymap(keys), rowPins, colPins, KEYPADROWS, KEYPADCOLS);
 
-char password[4] = {0,0,0,0}; // replacement for password.
-int  position = 0;
-char truePassword[4] = {'9','1','1', 0};
-char* names[6] = {"JJ", "AW", "JK", "CT", "CP"};
+char inputPassword[4] = { 0, 0, 0 };  // placeholder for password.
+int cursorPosition = 0;
+char truePassword[4] = { '9', '1', '1' };
+char* names[6] = { "JJ", "AW", "JK", "CT", "CP" };
 
 int positionCheck = 0; // initial servo position
-int openLock = 0;
+int openLock = 0; // skal synces med positionChechk
 
 void setup() {
   Serial.begin(115200);
@@ -65,9 +65,11 @@ void setup() {
 
   lcd.init();
   lcd.backlight();
+  lcd.clear();
 }
-
+int test = 0;
 void loop() {
+  //checkPassword(truePassword);
   delay(10);
 
 }
@@ -102,37 +104,34 @@ void reader(int howMany){
 
       case 'c': // Servo
         lockChange((int)strMessage[1]);
+        Serial.println(strMessage[0]);
         Serial.println((int)strMessage[1]);
         break;
 
       case 'd':
-        
+        Serial.println("test");
+        Serial.println("OwO");
+
+        delay(100);
+        checkPassword(truePassword);
+
         break;
 
       case 'e':
         
         break;
     }
+        Serial.println("OwO");
 
   // INSERT SWITCHCASE FOR EACH FUNCTION
 }
 
-/*
-void request(){
-  if (digitalRead(greenLed)){
-    Wire.write("g");
-  } else if (digitalRead(redLed)){
-    Wire.write("r");
-  } else {
-    Wire.write("0");
-  }
-}
 
-*/
+
 
 int lockChange(int lock){
-  //position == 0 open
-  //position == 1 locked
+  //lock == 0 open
+  //lock == 1 locked
 
   if(positionCheck!=lock){ // Checks if the door is already open or locked and does not turn if the input is the same as position
     if (lock == 0){ //Opens the door.
@@ -149,5 +148,75 @@ int lockChange(int lock){
 
 
 
+void checkPassword(char* truePassword) {
+        Serial.println("OwO");
+
+  //lcd.setCursor(0, 0);
+  //lcd.print("Enter password: ");
+  int key = keypad_door.getKey();  // the pressed button is saved in 'key'
+  
+  if (key) {           // when a button is pressed
+    if (key == '*') {  // delete all button
+      cursorPosition = 0;
+      //lcd.clear();
+      memset(inputPassword, 0, sizeof(inputPassword));           // reset password
+    } else if (key == '#') {                           // when # button is pressed
+      if (cursorPosition == 3) {                       // when # button is pressed as botton number 4 check if password is true
+        if (memcmp(inputPassword, truePassword, 4) == 0) {  // password is true
+          //lcd.setCursor(0, 1);
+          //lcd.print("Welcome home ");
+          //lcd.print(names[1]);
+          //return 1;
+        } else {  // entered password was wrong
+          //lcd.setCursor(0, 1);
+          //lcd.print("Wrong password");
+          //return 0;
+        }
+        cursorPosition = 0;                     // Reset position
+        memset(inputPassword, 0, sizeof(inputPassword));  // Reset password
+      } else if (cursorPosition > 3) {          //if more than 3 buttons are pressed the password is wrong
+        //lcd.setCursor(0, 1);
+        //lcd.print("Wrong password");
+        //return 0;
+      } else {  // when there is not enough numbers entered in the code
+        //lcd.setCursor(0, 1);
+        //lcd.print("Complete the Pin!");
+        cursorPosition = 0;                     // Reset position
+        memset(inputPassword, 0, sizeof(inputPassword));  // Reset password
+      }
+    } else {  // add number to array and print on lcd at the same time
+      inputPassword[cursorPosition] = key;
+      cursorPosition++;
+      //lcd.setCursor(0, 1);
+      char enteredPassword[3] = { inputPassword[0], inputPassword[1], inputPassword[2] };
+      //lcd.print(enteredPassword);
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+void request(){
+  if (digitalRead(greenLed)){
+    Wire.write("g");
+  } else if (digitalRead(redLed)){
+    Wire.write("r");
+  } else {
+    Wire.write("0");
+  }
+}
+
+*/
 
 
