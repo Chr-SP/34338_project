@@ -72,19 +72,19 @@ void handleRoot() {  // When URI / is requested, send a web page with a button t
   server.send(200, "text/html", "<html><title>Internet of Things - Demonstration</title><meta charset=\"utf8\" \/> \ 
       </head><body><h1>Smart Home Security System</h1> \
       <p>Lock or unlock door</p> \
-      <form action=\"/LOCK_DOOR\" method=\"POST\" ><input type=\"submit\" value=\"Lock door\"style=\"width:60px; height:20px; font-size:10px\";<p>"
+      <form action=\"/LOCK_DOOR\" method=\"POST\" ><input type=\"submit\" value=\"Lock door\"style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\";<p>"
                                   + door_text + " <p></form> \ 
       <p>Change between RFID or Keypad<p> \
-      <form action=\"/RFID\" method=\"POST\" ><input type=\"submit\" value=\"RFID keypad\"style=\"width:60px; height:20px; font-size:10px\";<p>"
+      <form action=\"/RFID\" method=\"POST\" ><input type=\"submit\" value=\"RFID keypad\"style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\";<p>"
                                   + RFID_text + " <p></form> \
       <p>Turn alarm on or off<p>\
-      <form action=\"/ALARMON\" method=\"POST\" ><input type=\"submit\" value=\"Alarm on\" style=\"width:60px; height:20px; font-size:10px\";<p>"
+      <form action=\"/ALARMON\" method=\"POST\" ><input type=\"submit\" value=\"Alarm on\" style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\";<p>"
                                   + alarm_text + " <p></form> \
       <p>Person RFID access<p>\
-      <form action=\"/User1\" method=\"POST\" ><input type=\"submit\" value=\"User1\" style=\"width:60px; height:20px; font-size:10px\"></form> \
-      <form action=\"/User2\" method=\"POST\" ><input type=\"submit\" value=\"User2\" style=\"width:60px; height:20px; font-size:10px\"></form> \
-      <form action=\"/User3\" method=\"POST\" ><input type=\"submit\" value=\"User3\" style=\"width:60px; height:20px; font-size:10px\"></form> \
-      <form action=\"/User4\" method=\"POST\" ><input type=\"submit\" value=\"User4\" style=\"width:60px; height:20px; font-size:10px\"></form> \
+      <form action=\"/User1\" method=\"POST\" ><input type=\"submit\" value=\"User1\" style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\"></form> \
+      <form action=\"/User2\" method=\"POST\" ><input type=\"submit\" value=\"User2\" style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\"></form> \
+      <form action=\"/User3\" method=\"POST\" ><input type=\"submit\" value=\"User3\" style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\"></form> \
+      <form action=\"/User4\" method=\"POST\" ><input type=\"submit\" value=\"User4\" style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\"></form> \
       <p>" + user_text + "<p>\
       <p>Change keypad code<p>\
       <form action =\"/PASSWORD\" method=\"POST\"><input type=\"password\" name=\"password\" placeholder=\"Password\"></br><input type=\"submit\" value=\"Change password\"></form> \
