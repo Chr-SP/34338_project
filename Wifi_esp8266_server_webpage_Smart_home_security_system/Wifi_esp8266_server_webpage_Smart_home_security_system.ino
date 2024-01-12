@@ -184,7 +184,7 @@ void handleNotFound() {
 void init_sever_connection() {
   // Connect to WiFi network
   Serial.println();
-  wifiMulti.addAP("OnePlus", "OnePlus123");  // add Wi-Fi networks you want to connect to
+  wifiMulti.addAP("Youcanforgetaboutit", "Anna1234");  // add Wi-Fi networks you want to connect to ##########################################################################
 
   Serial.println();
   Serial.print("Connecting ...");
