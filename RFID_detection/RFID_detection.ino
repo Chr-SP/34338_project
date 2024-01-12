@@ -159,8 +159,8 @@ void readDataFromKey(char *n){
   //3, 7, 11, 15, 19, 23, 27, 31, 35, 39, 43, 47, 51, 55, 59, 63 
   //IS OFF LIMITS AND WILL RUIN A SECTOR ON A CARD IF USED!
   int blockNumber = 16; //Number of the block that will be written to
-  char tempData[18];
-  char bufferLength = 18; 
+  byte tempData[18];
+  byte bufferLength = 18; 
 
   //Authentication check for writing
   status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, blockNumber, &key, &(mfrc522.uid));
