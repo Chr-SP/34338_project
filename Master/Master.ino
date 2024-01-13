@@ -23,56 +23,38 @@ void setup() {
 void loop() {
   char toSend[3] = {0,0};
 
+  // Check lighting
   bool motionSensedIndoor = motionSensed(motionSensorIndoorPin);
   bool motionSensedOutdoor = motionSensed(motionSensorOutdoorPin);
+  //lightsystemIndoor(position, motionSensedIndoor);
+  //lightsystemOutdoor(motionSensedOutdoor);
 
 
-  lightsystemIndoor(position, motionSensedIndoor);
-  lightsystemOutdoor(motionSensedOutdoor);
 
-
-  //sendMessage(toSend);
-  delay(20);
-
-  
   while (Serial.available() >0){
     int servoPosistion = Serial.parseInt();
-    servoLock(servoPosistion);
-    
+    toSend[0] = 'd';
+    toSend[1] = 0;
+    sendMessage(toSend);
+    Serial.println(toSend[0]);
+    Serial.println((int)toSend[1]);
 
-    delay(10);
   }
-
   /*
-  Wire.beginTransmission(11);
-  if (Serial.available() > 0) {  // checks for input
-    char input = (char)tolower(Serial.read());  // typecasting the input to a char
-    if (input=='a'){
-      // toSend[100] = "a was send";
-      Wire.write("a was sent");
-    }
-    // Wire.write(toSend);
-  Wire.endTransmission();
+  while (Serial.available() >0){
+    int servoPosistion = Serial.parseInt();
+      servoLock(servoPosistion);
   }
   */
-  
 
-  /*
-  if (input == 's'){
-    Wire.requestFrom(11,1);
-    while(Wire.available()){
-      char a = Wire.read();
-      Serial.print("LED turned on: ");
-      Serial.println(a);
-    }
-  }
-  */
+
 }
 
 
 void sendMessage(char toSend[]){ // transmit command to slave
   Wire.beginTransmission(11);
   Wire.write(toSend);
+  delay(100);
   Wire.endTransmission();
 }
 
@@ -123,5 +105,7 @@ void servoLock(int lock){
     toSend[1] = 0; // Unlock the servo
     sendMessage(toSend);
   }
+  Serial.println(toSend[0]);
+  Serial.println((int)toSend[1]);
 }
 

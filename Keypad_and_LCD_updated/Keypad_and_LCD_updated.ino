@@ -7,13 +7,13 @@
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 // defining 7 pin numberes for the keypad
-#define R1 9
-#define R2 8
-#define R3 7
-#define R4 6
-#define C1 5
-#define C2 4
-#define C3 3
+#define R1 12
+#define R2 11
+#define R3 10
+#define R4 9
+#define C1 8
+#define C2 7
+#define C3 6
 
 // defining the keypad dimensions and characters
 const byte KEYPADROWS = 4;
