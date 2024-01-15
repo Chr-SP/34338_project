@@ -8,8 +8,8 @@
 #include <SPI.h>
 #include <MFRC522.h> 
 
-#define RST_PIN   9    // set Reset to digital pin 9
-#define SS_PIN   10    // set SDA to digital pin 10
+#define RST_PIN   D4    // set Reset to digital pin 9
+#define SS_PIN   D8    // set SDA to digital pin 10
 
 MFRC522 mfrc522(SS_PIN, RST_PIN); //Define a new RFC reader
 
@@ -72,7 +72,7 @@ void readID(bool *a, char* n){
   }
 
   //Print function for debugging.
-  /*
+  
   for(int i = 0 ; i < 4; i++){
     Serial.print(UID[i],HEX);
     Serial.print(" ");
@@ -80,7 +80,7 @@ void readID(bool *a, char* n){
   Serial.println(" Card has been read");
 
   Serial.println(name);
-  */
+  
 
   mfrc522.PICC_HaltA(); //Prevents redetection of a card
 
