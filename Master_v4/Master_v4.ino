@@ -1,6 +1,6 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
-#include <ESP8266WiFi.h>        
+#include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <ESP8266WiFiMulti.h>  // Include the Wi-Fi-Multi library
 #include <ESP8266WebServer.h>  // Include the WebServer library
@@ -15,36 +15,45 @@ const int lightSensorPin = A0;
 const int motionSensorIndoorPin = D0;
 const int motionSensorOutdoorPin = D3;
 
-int lightThreshold = 100; //A threshold that controls when light level is low
-int position = 0; // position of the servo / lock
+const int LOCKDOOR = 0;
+const int OPENDOOR = 1;
+const int KEYPAD_ON = 0;
+const int RFID_ON = 1;
 
-char toSend[3] = {0,0}; // the char defining a command to send to slave
-char recieved[3] = {0,0};
+uint8_t keypad_RFID_select = RFID_ON;   // control variable to switch between RFID and keypad (1 fot RFID, 0 for keypad)
+uint8_t alarm_on_off = 0;  // control variable for the alarm (0 for off)
+/*
+const char SERVOCONTROL = 'c';  // Servo destination?
+
+*/
+
+
+int lightThreshold = 100;  //A threshold that controls when light level is low
+int lockPosition = 0;      // position of the servo / lock
+
+
+char toSend[3] = { 0, 0 };  // the char defining a command to send to slave
+char recieved[3] = { 0, 0 };
 
 
 // variables for keypad - lcd
-char inputPassword[4] = { 0, 0, 0 , 0};  // placeholder for password.
+char inputPassword[4] = { 0, 0, 0, 0 };  // placeholder for password.
 char enteredPassword[4] = { inputPassword[0], inputPassword[1], inputPassword[2] };
 int cursorPosition = 0;
-char truePassword[4] = { '9', '1', '1' , 0};
+char truePassword[4] = { '9', '1', '1', 0 };
 int doClear = 0;
 unsigned long timestamp;
 //char* names[6] = { "JJ", "AW", "JK", "CT", "CP" };
 //int lock = 0; /////////////////////// Still needed?????
 
 
-const uint8_t led = D2;
-//uint8_t door_on_off = 1;  // control variable for door lock
-uint8_t keypad_RFID = 1;  // control variable to switch between RFID and keypad (1 fot RFID, 0 for keypad)
-uint8_t alarm_on_off = 0; // control variable for the alarm (0 for off)
 /* Variable text strings used in HTML code*/
 String door_text = " Door is locked";
 String RFID_text = " RFID is active";
 String user_text = " User 1 is active";
 String alarm_text = " Alarm is off";
-String new_password = "000";
 
-char password[4] = { 0, 0, 0 }; // Password for keypad
+char password[4] = { 0, 0, 0 };  // Password for keypad
 /* Handle functions for the server*/
 void handleRoot();
 void handleNotFound();
@@ -62,9 +71,9 @@ void setup() {
   Serial.begin(115200);
   delay(10);
 
-  Wire.begin(D2,D1); // SDA, SCL
+  Wire.begin(D2, D1);  // SDA, SCL
 
-  pinMode(lightSensorPin, INPUT_PULLUP); // light sensor
+  pinMode(lightSensorPin, INPUT_PULLUP);  // light sensor
   pinMode(motionSensorIndoorPin, INPUT);
   pinMode(motionSensorOutdoorPin, INPUT);
 
@@ -72,8 +81,9 @@ void setup() {
   lcd.init();
   lcd.backlight();
   lcd.clear();
-  lcd.setCursor(0, 0); //////////////////////////////////////////////////////////////
-  lcd.print("Enter password: "); ////////////////////////////////////////////////////
+  lcd.setCursor(0, 0);            //////////////////////////////////////////////////////////////
+  lcd.print("Enter password: ");  ////////////////////////////////////////////////////
+
   delay(10);
   server.on("/LOCK_DOOR", HTTP_POST, handle_door);
   server.on("/RFID", HTTP_POST, handle_RFID_keypad);
@@ -97,118 +107,97 @@ void loop() {
   bool motionSensedOutdoor = motionSensed(motionSensorOutdoorPin);
   lightsystemIndoor(position, motionSensedIndoor);
   lightsystemOutdoor(motionSensedOutdoor);
-
-  
   */
-
-  getMessage();
+  if (keypad_RFID_select) { // RFID is selecet
+    get_RFID();
+  } else{
+    getMessage();
+  }
   //delay(10);
-  
 }
 
 
-void sendMessage(char toSend[]){ // transmit command to slave
+void get_RFID(){
+
+
+}
+
+
+
+void sendMessage(char toSend[]) {  // transmit command to slave
   Wire.beginTransmission(11);
   Wire.write(toSend);
   //delay(100);
   Wire.endTransmission();
 }
 
-
-void getMessage(){
-  char recieved[3] = {0,0};
-  Wire.requestFrom(11,2);
+void getMessage() {
+  char recieved[3] = { 0, 0 };
+  Wire.requestFrom(11, 2);
   int i = 0;
-  while(Wire.available()){
+  while (Wire.available()) {
     recieved[i] = Wire.read();
     i++;
   }
 
 
-  if ((doClear == 1) && (timestamp + 2000 < millis())){ // check if clear is needed
+  if ((doClear == 1) && (timestamp + 2000 < millis())) {  // check if clear is needed
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Enter password: ");
     doClear = 0;
   }
 
-  if (recieved[0]=='k'){ ///////////////////dont ask why it's not 'k'
+  if (recieved[0] == 'k') {  ///////////////////dont ask why it's not 'k'
 
-    /*
-    if ((toClear[0] == 1) && (toClear[1] + 1000 < millis())){ // clear display when new press
-      lcd.clear();
-      toClear[0] = 0;
-    }
-    */
-
-    Serial.println(recieved[1]);
+    // Serial.println(recieved[1]);
     lcd.setCursor(0, 0);
     lcd.print("Enter password: ");
-    int key = recieved[1];  // the pressed button is saved in 'key'
-    //Serial.println(recieved[0]);
-    //Serial.println(key);
-    
 
+    if ((recieved[1]) && (doClear == 0)) {  // when a button is pressed
 
-    if ((key) && (doClear == 0)) {           // when a button is pressed
-      if (key == '*') {  // delete all button
+      if (recieved[1] == '*') {             // delete all button
         cursorPosition = 0;
         lcd.clear();
         lcd.setCursor(0, 0);
         lcd.print("Enter password: ");
-        memset(inputPassword, 0, sizeof(inputPassword));           // reset password
-      }
-      else if (key == '#') {                           // when # button is pressed
-        if (cursorPosition == 3) {                       // when # button is pressed as botton number 4 check if password is true
+        memset(inputPassword, 0, sizeof(inputPassword));      // reset password
+
+        
+      } else if (recieved[1] == '#') {                                // when # button is pressed
+        if (cursorPosition == 3) {                            // when # button is pressed as botton number 4 check if password is true
           if (memcmp(inputPassword, truePassword, 4) == 0) {  // password is true
             lcd.setCursor(0, 1);
             lcd.print("Welcome home ");
-            doClear = 1;
-            timestamp = millis();
-            servoLock(position); // Unlock the door
-            //lcd.print(names[1]);
-            //return 1;
-          }
-          else {  // entered password was wrong
+            servoLock(LOCKDOOR,'c');                        // SERVOCONTROL
+            door_text = " Door is open";
+            server_update_header();                         // Updates server text for door lock
+          } else {  // entered password was wrong
             lcd.setCursor(0, 1);
             lcd.print("Wrong password");
-            cursorPosition = 0;
-            memset(inputPassword, 0, sizeof(inputPassword));  // Reset password
-            doClear = 1;
-            timestamp = millis();
-            //return 0;
           }
-          cursorPosition = 0;                     // Reset position
-          memset(inputPassword, 0, sizeof(inputPassword));  // Reset password
-        }
-        else if (cursorPosition >= 3) {          //if more than 3 buttons are pressed the password is wrong
+        } else if (cursorPosition >= 3) {                   //if more than 3 buttons are pressed the password is wrong
           lcd.setCursor(0, 1);
           lcd.print("Wrong password");
-          cursorPosition = 0;
-          memset(inputPassword, 0, sizeof(inputPassword));  // Reset password
-          doClear = 1;
-          timestamp = millis();
-          //return 0;
-        }
-        else {  // when there is not enough numbers entered in the code
+        } else {  // when there is not enough numbers entered in the code
           lcd.setCursor(0, 1);
           lcd.print("Complete the Pin!");
-          cursorPosition = 0;                     // Reset position
-          memset(inputPassword, 0, sizeof(inputPassword));  // Reset password
-          doClear = 1;
-          timestamp = millis();
         }
-      }
-      else if(cursorPosition >= 3){
+        cursorPosition = 0;                               // Reset position
+        memset(inputPassword, 0, sizeof(inputPassword));  // Reset password
+        doClear = 1;
+        timestamp = millis();
+      } else if (cursorPosition >= 3) {
         lcd.setCursor(0, 1);
         lcd.print("Wrong password");
+
         cursorPosition = 0;
         memset(inputPassword, 0, sizeof(inputPassword));  // Reset password
         doClear = 1;
         timestamp = millis();
-      }
-      else {  // add number to array and print on lcd at the same time
-        inputPassword[cursorPosition] = key;
+        
+      } else {  // add number to array and print on lcd at the same time
+        inputPassword[cursorPosition] = recieved[1];
         cursorPosition++;
         lcd.setCursor(0, 1);
         char enteredPassword[4] = { inputPassword[0], inputPassword[1], inputPassword[2] };
@@ -218,60 +207,44 @@ void getMessage(){
   }
 }
 
-void lightsystemIndoor(int position, bool motionSensed){
+void lightsystemIndoor(int position, bool motionSensed) {
   int lightLevel = analogRead(lightSensorPin);
 
-  if((lightLevel > lightThreshold) || (motionSensed==false)){ //when there is light (light level is higher than threshold), then turn off LED
+  if ((lightLevel > lightThreshold) || (motionSensed == false)) {  //when there is light (light level is higher than threshold), then turn off LED
     toSend[0] = 'a';
     toSend[1] = 0;
     sendMessage(toSend);
-  }
-  else if((position == 0) && (motionSensed==true)){ // If it is dark (light level is less than threshold) turn on LED an amout dependet on how dark it is.
-    int light = 255 - lightLevel * 254 / lightThreshold; // SKAL SKALERES YDERLIGERE
+  } else if ((position == 0) && (motionSensed == true)) {  // If it is dark (light level is less than threshold) turn on LED an amout dependet on how dark it is.
+    int light = 255 - lightLevel * 254 / lightThreshold;   // SKAL SKALERES YDERLIGERE
     toSend[0] = 'a';
-    toSend[1] = light; // light
+    toSend[1] = light;  // light
     sendMessage(toSend);
   }
 }
 
-void lightsystemOutdoor(bool motionSensed){
+void lightsystemOutdoor(bool motionSensed) {
   int lightLevel = analogRead(lightSensorPin);
 
-  if ((lightLevel > lightThreshold) || (motionSensed == false)){
+  if ((lightLevel > lightThreshold) || (motionSensed == false)) {
     toSend[0] = 'b';
-    toSend[1] = 0; // Outside LED off
+    toSend[1] = 0;  // Outside LED off
     sendMessage(toSend);
-  }
-  else{
+  } else {
     toSend[0] = 'b';
-    toSend[1] = 1; // Outside LED on
+    toSend[1] = 1;  // Outside LED on
     sendMessage(toSend);
   }
 }
 
-bool motionSensed(int whichMotionSensor){
+bool motionSensed(int whichMotionSensor) {
   bool motionSensed = digitalRead(whichMotionSensor);
   return motionSensed;
 }
-
-void servoLock(int lock){
-  position = !position;
-  if (lock==1){
-    toSend[0] = 'c';
-    toSend[1] = 1; // Lock the servo
+void servoLock(int control_door, char slave_servo_lock) {
+    toSend[0] = slave_servo_lock;
+    toSend[1] = control_door;  // Lock the servo
     sendMessage(toSend);
-  }
-  else{
-    toSend[0] = 'c';
-    toSend[1] = 0; // Unlock the servo
-    sendMessage(toSend);
-  }
-  Serial.println(toSend[0]);
-  Serial.println((int)toSend[1]);
 }
-
-
-
 
 void handleRoot() {  // When URI / is requested, send a web page with a button to toggle the LED
   server.send(200, "text/html", "<html><title>Internet of Things - Demonstration</title><meta charset=\"utf8\" \/> \ 
@@ -296,50 +269,49 @@ void handleRoot() {  // When URI / is requested, send a web page with a button t
       </body></html>");
 }
 // <form action=\"/PASSWORD\" method=\"POST\"><input type=\"text\" name=\"password\" placeholder=\"New password\"></form>
-
-void handle_door() {  // If a POST request is made to URI /LED
-  //door_on_off = !door_on_off;
-  if (position == 0) {
-    servoLock(position);
-    door_text = " Door is locked";
-  } else {
-    servoLock(position);
-    door_text = " Door is open";
-  }
+void server_update_header() {
   server.sendHeader("Location", "/");  // Add a header to respond with a new location for the browser to go to the home page again
   server.send(303);                    // Send it back to the browser with an HTTP status 303 (See Other) to redirect
 }
 
+void handle_door() {  // If a POST request is made to URI /LED
+  lockPosition = !lockPosition;
+  if (!lockPosition) {  // Lock door request
+    servoLock(LOCKDOOR,'c');                                  // SERVOCONTROL
+    door_text = " Door is locked";
+  } else {
+    servoLock(OPENDOOR,'c');                                  // SERVOCONTROL
+    door_text = " Door is open";
+  }
+  server_update_header();
+}
+
 void handle_RFID_keypad() {  // If a POST request is made to URI /LED
-  keypad_RFID = !keypad_RFID;
-  if (keypad_RFID) {
+  keypad_RFID_select = !keypad_RFID_select;
+  if (keypad_RFID_select) {
     RFID_text = " RFID is active";
   } else {
     RFID_text = " Keypad is active";
   }
-  server.sendHeader("Location", "/");  // Add a header to respond with a new location for the browser to go to the home page again
-  server.send(303);                    // Send it back to the browser with an HTTP status 303 (See Other) to redirect
+  server_update_header();
 }
 void handle_user1() {
   user_text = " User1 has access";
-  server.sendHeader("Location", "/");  // Add a header to respond with a new location for the browser to go to the home page again
-  server.send(303);                    // Send it back to the browser with an HTTP status 303 (See Other) to redirect
+  server_update_header();
 }
 void handle_user2() {
   user_text = " User2 has access";
-  server.sendHeader("Location", "/");  // Add a header to respond with a new location for the browser to go to the home page again
-  server.send(303);                    // Send it back to the browser with an HTTP status 303 (See Other) to redirect
+  server_update_header();
 }
 void handle_user3() {
   user_text = " User3 has access";
-  server.sendHeader("Location", "/");  // Add a header to respond with a new location for the browser to go to the home page again
-  server.send(303);                    // Send it back to the browser with an HTTP status 303 (See Other) to redirect
+  server_update_header();
 }
 void handle_user4() {
   user_text = " User4 has access";
-  server.sendHeader("Location", "/");  // Add a header to respond with a new location for the browser to go to the home page again
-  server.send(303);                    // Send it back to the browser with an HTTP status 303 (See Other) to redirect
+  server_update_header();
 }
+
 void handle_alarm() {  // If a POST request is made to URI /LED
   alarm_on_off = !alarm_on_off;
   if (alarm_on_off) {
@@ -347,14 +319,10 @@ void handle_alarm() {  // If a POST request is made to URI /LED
   } else {
     alarm_text = " Alarm is off";
   }
-  server.sendHeader("Location", "/");  // Add a header to respond with a new location for the browser to go to the home page again
-  server.send(303);                    // Send it back to the browser with an HTTP status 303 (See Other) to redirect
+  server_update_header();
 }
-void handleLED() {                       // If a POST request is made to URI /LED
-  digitalWrite(led, !digitalRead(led));  // Change the state of the LED
-  server.sendHeader("Location", "/");    // Add a header to respond with a new location for the browser to go to the home page again
-  server.send(303);                      // Send it back to the browser with an HTTP status 303 (See Other) to redirect
-}
+
+
 void handle_password() {                                               // If a POST request is made to URI /login
   if (!server.hasArg("password") || server.arg("password") == NULL) {  // If the POST request doesn't have a password data
     server.send(400, "text/plain", "400: Invalid Request");            // The request is invalid, so send HTTP status 400
@@ -363,25 +331,24 @@ void handle_password() {                                               // If a P
 
   //----------------------------------
   // Check for password longer than 3
-  if (!server.hasArg("password") || server.arg("password") == NULL) {  // If the POST request doesn't have a password data
-    server.send(400, "text/plain", "400: Invalid Request");            // The request is invalid, so send HTTP status 400
-    return;
-  }
+  // if (!server.hasArg("password") || server.arg("password") == NULL) {  // If the POST request doesn't have a password data
+  //   server.send(400, "text/plain", "400: Invalid Request");            // The request is invalid, so send HTTP status 400
+  //   return;
+  // }
   //----------------------------------
 
   if (server.arg("password")) {  // If both the username and the password are correct
     server.send(200, "text/html", "<h1>Your new password is, " + server.arg("password") + "!</h1><p>Password change successful</p>");
-    new_password = server.arg("password");
-    from_String_to_CharArray(server.arg("password"), password );
-    // password[0] = new_password[0];
-    Serial.println(password);
+    from_String_to_CharArray(server.arg("password"), truePassword);
+    // Serial.println(truePassword);
   } else {  // Username and password don't match
     server.send(401, "text/plain", "401: Unauthorized");
   }
 }
-void from_String_to_CharArray(const String& S_word, char* Array){
+
+void from_String_to_CharArray(const String& S_word, char* Array) {
   for (int i = 0; i < 4; i++) {
-  Array[i]=S_word[i];
+    Array[i] = S_word[i];
   }
 }
 
@@ -418,5 +385,3 @@ void init_sever_connection() {
   server.begin();
   Serial.println("Server started");
 }
-
-
