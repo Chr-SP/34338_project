@@ -5,6 +5,8 @@
 #include <ESP8266WiFiMulti.h>  // Include the Wi-Fi-Multi library
 #include <ESP8266WebServer.h>  // Include the WebServer library
 #include <ESP8266mDNS.h>       // Include the mDNS library
+#include <SPI.h>
+#include <MFRC522.h>
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 ESP8266WiFiMulti wifiMulti;
@@ -14,22 +16,27 @@ ESP8266WebServer server(80);
 const int lightSensorPin = A0;
 const int motionSensorIndoorPin = D0;
 const int motionSensorOutdoorPin = D3;
+const int RST_PIN = D4;    // set Reset to digital pin 9
+const int SS_PIN = D8;    // set SDA to digital pin 10
 
 const int LOCKDOOR = 0;
 const int OPENDOOR = 1;
 const int KEYPAD_ON = 0;
 const int RFID_ON = 1;
+const int ALARM_ON = 1;
+const int ALARM_OFF = 0;
 
 uint8_t keypad_RFID_select = RFID_ON;   // control variable to switch between RFID and keypad (1 fot RFID, 0 for keypad)
 uint8_t alarm_on_off = 0;  // control variable for the alarm (0 for off)
-/*
-const char SERVOCONTROL = 'c';  // Servo destination?
 
-*/
+const char INSIDE_LED = 'a';
+const char OUTDOOR_LED = 'b';
+const char SERVOCONTROL = 'c';  // Servo destination?
+const char ALARMCONTROL = 'd';
 
 
 int lightThreshold = 100;  //A threshold that controls when light level is low
-int lockPosition = 0;      // position of the servo / lock
+int lockPosition = OPENDOOR;      // position of the servo / lock
 
 
 char toSend[3] = { 0, 0 };  // the char defining a command to send to slave
@@ -48,7 +55,7 @@ unsigned long timestamp;
 
 
 /* Variable text strings used in HTML code*/
-String door_text = " Door is locked";
+String door_text = " Door is open";
 String RFID_text = " RFID is active";
 String user_text = " User 1 is active";
 String alarm_text = " Alarm is off";
@@ -66,6 +73,18 @@ void handle_user4();
 void handle_alarm();
 void handle_password();
 
+
+MFRC522 mfrc522(SS_PIN, RST_PIN); //Define a new RFC reader
+MFRC522::MIFARE_Key key; //Defines a new instanse of the MIFARE key
+MFRC522::StatusCode status; //Defines an instanse of the status code
+//Matrix contaning ID's defined as valid
+byte validAccess[4][4] = {{0x63, 0xC8, 0xA0, 0x34},
+                          {0xF9, 0xAD, 0xD8, 0x15},
+                          {0xB9, 0xE1, 0x6C, 0x14},
+                          {0x53, 0xB2, 0x05, 0x34}};
+byte userAccess[4] = {1, 1, 1, 1};  // users who have access              
+bool access;
+char name[18];
 
 void setup() {
   Serial.begin(115200);
@@ -95,31 +114,44 @@ void setup() {
   server.on("/PASSWORD", HTTP_POST, handle_password);
 
   init_sever_connection();
+
+  SPI.begin();
+  mfrc522.PCD_Init(); //Setup and initialize RFID reader
+  //Prepare the keys for authentication
+  for(int i = 0 ; i < 6 ; i++){
+    key.keyByte[i] = 0xFF;
+  }
 }
 
 void loop() {
-  server.handleClient();
-  /*
   char toSend[3] = {0,0};
 
+  server.handleClient();
+
+  /*
   // Check lighting
-  bool motionSensedIndoor = motionSensed(motionSensorIndoorPin);
-  bool motionSensedOutdoor = motionSensed(motionSensorOutdoorPin);
-  lightsystemIndoor(position, motionSensedIndoor);
-  lightsystemOutdoor(motionSensedOutdoor);
+  lightsystemIndoor(position);
+  lightsystemOutdoor();
   */
+  motionAlarm(lockPosition);
+
+  readID(&access, &name[0]);
+  getMessage();
+  /*
   if (keypad_RFID_select) { // RFID is selecet
-    get_RFID();
+    readID(&access, &name[0]);
   } else{
     getMessage();
   }
+  */
   //delay(10);
-}
 
-
-void get_RFID(){
-
-
+  if ((doClear == 1) && (timestamp + 2000 < millis())) {  // check if clear is needed
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Enter password: ");
+    doClear = 0;
+  }
 }
 
 
@@ -127,8 +159,13 @@ void get_RFID(){
 void sendMessage(char toSend[]) {  // transmit command to slave
   Wire.beginTransmission(11);
   Wire.write(toSend);
-  //delay(100);
   Wire.endTransmission();
+}
+
+void slaveControlWord(char component, int stateValue) {
+  toSend[0] = component;
+  toSend[1] = stateValue;  // Lock the servo
+  sendMessage(toSend);
 }
 
 void getMessage() {
@@ -140,13 +177,14 @@ void getMessage() {
     i++;
   }
 
-
+  /*
   if ((doClear == 1) && (timestamp + 2000 < millis())) {  // check if clear is needed
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Enter password: ");
     doClear = 0;
   }
+  */
 
   if (recieved[0] == 'k') {  ///////////////////dont ask why it's not 'k'
 
@@ -169,9 +207,7 @@ void getMessage() {
           if (memcmp(inputPassword, truePassword, 4) == 0) {  // password is true
             lcd.setCursor(0, 1);
             lcd.print("Welcome home ");
-            servoLock(LOCKDOOR,'c');                        // SERVOCONTROL
-            door_text = " Door is open";
-            server_update_header();                         // Updates server text for door lock
+            handle_door();
           } else {  // entered password was wrong
             lcd.setCursor(0, 1);
             lcd.print("Wrong password");
@@ -207,14 +243,14 @@ void getMessage() {
   }
 }
 
-void lightsystemIndoor(int position, bool motionSensed) {
+void lightsystemIndoor(int lockPosition) {
   int lightLevel = analogRead(lightSensorPin);
 
-  if ((lightLevel > lightThreshold) || (motionSensed == false)) {  //when there is light (light level is higher than threshold), then turn off LED
+  if ((lightLevel > lightThreshold) || (!digitalRead(motionSensorIndoorPin))) {  //when there is light (light level is higher than threshold), then turn off LED
     toSend[0] = 'a';
     toSend[1] = 0;
     sendMessage(toSend);
-  } else if ((position == 0) && (motionSensed == true)) {  // If it is dark (light level is less than threshold) turn on LED an amout dependet on how dark it is.
+  } else if ((lockPosition == 0) && (digitalRead(motionSensorIndoorPin))) {  // If it is dark (light level is less than threshold) turn on LED an amout dependet on how dark it is.
     int light = 255 - lightLevel * 254 / lightThreshold;   // SKAL SKALERES YDERLIGERE
     toSend[0] = 'a';
     toSend[1] = light;  // light
@@ -222,10 +258,10 @@ void lightsystemIndoor(int position, bool motionSensed) {
   }
 }
 
-void lightsystemOutdoor(bool motionSensed) {
+void lightsystemOutdoor() {
   int lightLevel = analogRead(lightSensorPin);
 
-  if ((lightLevel > lightThreshold) || (motionSensed == false)) {
+  if ((lightLevel > lightThreshold) || (!digitalRead(motionSensorOutdoorPin))) {
     toSend[0] = 'b';
     toSend[1] = 0;  // Outside LED off
     sendMessage(toSend);
@@ -236,15 +272,27 @@ void lightsystemOutdoor(bool motionSensed) {
   }
 }
 
+void motionAlarm(int lockPosition){ 
+  if((!lockPosition == LOCKDOOR) && (digitalRead(motionSensorIndoorPin))){ //If the door is locked and there is motion, the alarm starts
+    handle_alarm();
+  }
+}
+
+
+/*
 bool motionSensed(int whichMotionSensor) {
   bool motionSensed = digitalRead(whichMotionSensor);
   return motionSensed;
 }
+*/
+
+/*
 void servoLock(int control_door, char slave_servo_lock) {
-    toSend[0] = slave_servo_lock;
-    toSend[1] = control_door;  // Lock the servo
-    sendMessage(toSend);
+  toSend[0] = slave_servo_lock;
+  toSend[1] = control_door;  // Lock the servo
+  sendMessage(toSend);
 }
+*/
 
 void handleRoot() {  // When URI / is requested, send a web page with a button to toggle the LED
   server.send(200, "text/html", "<html><title>Internet of Things - Demonstration</title><meta charset=\"utf8\" \/> \ 
@@ -275,14 +323,14 @@ void server_update_header() {
 }
 
 void handle_door() {  // If a POST request is made to URI /LED
-  lockPosition = !lockPosition;
-  if (!lockPosition) {  // Lock door request
-    servoLock(LOCKDOOR,'c');                                  // SERVOCONTROL
+  if (lockPosition) {  // Lock door request
+    slaveControlWord(SERVOCONTROL, LOCKDOOR);
     door_text = " Door is locked";
   } else {
-    servoLock(OPENDOOR,'c');                                  // SERVOCONTROL
+    slaveControlWord(SERVOCONTROL, OPENDOOR);
     door_text = " Door is open";
   }
+  lockPosition = !lockPosition;
   server_update_header();
 }
 
@@ -313,12 +361,16 @@ void handle_user4() {
 }
 
 void handle_alarm() {  // If a POST request is made to URI /LED
-  alarm_on_off = !alarm_on_off;
-  if (alarm_on_off) {
+  if ((!alarm_on_off) || (digitalRead(motionSensorIndoorPin))) {
     alarm_text = " Alarm is on";
+    slaveControlWord(ALARMCONTROL, ALARM_ON);
+    alarm_on_off = 1;
   } else {
     alarm_text = " Alarm is off";
+    alarm_on_off = 0;
+    slaveControlWord(ALARMCONTROL, ALARM_OFF);
   }
+  //alarm_on_off = !alarm_on_off;
   server_update_header();
 }
 
@@ -358,7 +410,7 @@ void handleNotFound() {
 void init_sever_connection() {
   // Connect to WiFi network
   Serial.println();
-  wifiMulti.addAP("Youcanforgetaboutit", "Anna1234");  // add Wi-Fi networks you want to connect to ##########################################################################
+  wifiMulti.addAP("ChristianPhone", "34338Christian");  // add Wi-Fi networks you want to connect to ##########################################################################
 
   Serial.println();
   Serial.print("Connecting ...");
@@ -385,3 +437,164 @@ void init_sever_connection() {
   server.begin();
   Serial.println("Server started");
 }
+
+
+void readID(bool *a, char* n){
+  byte UID[4];
+  
+  // Reset the loop if no new card present on the sensor/reader
+	if ( ! mfrc522.PICC_IsNewCardPresent()) {
+		return;
+	}
+
+	if ( ! mfrc522.PICC_ReadCardSerial()) {
+		return;
+	}
+  
+  //Read all values of the UID from a card and store them in UID array
+  for(int i = 0 ; i < 4; i++){
+    UID[i] = mfrc522.uid.uidByte[i];
+  }
+
+
+  *a = checkAccess(&UID[0]);
+
+  
+  
+  if(access == true){
+    readDataFromKey(n);
+    lcd.setCursor(0, 1);
+    lcd.print("Welcome home ");
+    lcd.print(name);
+    handle_door();
+    doClear = 1;
+    timestamp = millis();
+  }
+
+  //Print function for debugging.
+  
+  for(int i = 0 ; i < 4; i++){
+    Serial.print(UID[i],HEX);
+    Serial.print(" ");
+  }
+  Serial.println(" Card has been read");
+
+  Serial.println(name);
+  
+
+  mfrc522.PICC_HaltA(); //Prevents redetection of a card
+
+  mfrc522.PCD_StopCrypto1();
+
+}
+
+//Checks all stored card numbers with UID, if there is a match return acces granted as true
+bool checkAccess(byte *UID){
+  bool accessGranted = false;
+  
+  for(int i = 0 ; i < 4 ; i++){ //Runs through all stored cards
+    int match = 0;
+    for(int k = 0 ; k < 4 ; k++){ //Runs through all numbers in a saved card
+      if (validAccess[i][k] == UID[k]){ 
+        match++;
+      }
+    }
+    if((match == 4) && (userAccess[i])){
+      accessGranted = true;
+    }
+  }
+  return accessGranted;
+}
+
+void writeDataToKey(char initials[2]){
+
+  // Reset the loop if no new card present on the sensor/reader
+	if ( ! mfrc522.PICC_IsNewCardPresent()) {
+		return;
+	}
+	if ( ! mfrc522.PICC_ReadCardSerial()) {
+		return;
+	}
+  
+  //3, 7, 11, 15, 19, 23, 27, 31, 35, 39, 43, 47, 51, 55, 59, 63 
+  //IS OFF LIMITS AND WILL RUIN A SECTOR ON A CARD IF USED!
+  int blockNumber = 16; //Number of the block that will be written to
+
+  //Authentication check for writing
+  status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, blockNumber, &key, &(mfrc522.uid));
+
+  //Check for success of authentication
+  if(status != MFRC522::STATUS_OK){
+    //Serial.println("Error in authentication");
+    return;
+  }
+  else{
+    Serial.println("Authentication succesful");
+  }
+  
+
+  
+  status = mfrc522.MIFARE_Write(blockNumber, (byte*)initials, 16); //Try to write data
+
+  //Check for succes of write
+  if(status != MFRC522::STATUS_OK){
+    Serial.println("Failed writing data");
+    return;
+  } 
+  else{
+    Serial.println("Data was written succesfully");
+  }
+  
+
+  mfrc522.PICC_HaltA(); //Prevents reditection of a card
+
+  mfrc522.PCD_StopCrypto1();
+
+}
+
+void readDataFromKey(char *n){
+  //3, 7, 11, 15, 19, 23, 27, 31, 35, 39, 43, 47, 51, 55, 59, 63 
+  //IS OFF LIMITS AND WILL RUIN A SECTOR ON A CARD IF USED!
+  int blockNumber = 16; //Number of the block that will be written to
+  byte tempData[18];
+  byte bufferLength = 18; 
+
+  //Authentication check for writing
+  status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, blockNumber, &key, &(mfrc522.uid));
+
+  //Check for success of authentication
+  if(status != MFRC522::STATUS_OK){
+    //Serial.println("Error in authentication");
+    return;
+  }
+  /*
+  else{
+    Serial.println("Authentication succesful");
+  }
+  */
+
+
+  status = mfrc522.MIFARE_Read(blockNumber, tempData, &bufferLength); //Try to read from the wanted block and store it in tempData
+  bufferLength = 18;
+  //Check for succes of read
+  if (status != MFRC522::STATUS_OK)
+  {
+    //Serial.print("Failed to read data");
+    return;
+  }
+  /*
+  else{
+    Serial.println("Data was read succesfully");  
+  }
+  */
+
+  //Copy data from temp variable to wanted variable
+  for(int i = 0; i < 18; i++){
+    *n = tempData[i];
+    n++;
+  }
+}
+
+
+
+

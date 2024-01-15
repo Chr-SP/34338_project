@@ -9,6 +9,10 @@ const int IndoorLEDPin = 5; // D5 - PVM
 const int OutdoorLEDPin = 4; // D4
 const int ServoMoterPin = 3; // D3
 
+const int BuzzerPin = 2;
+const int ledred = 13;
+//const int ledblue = 13;
+
 // Keypad is inspired by https://projecthub.arduino.cc/mckean0/keypad-entry-lock-2d9999#
 // defining 7 pin numberes for the keypad
 #define R1 12
@@ -38,6 +42,12 @@ char keyTemp = NO_KEY;
 
 int positionCheck = 0; // initial servo position
 
+int alarm_on_off = 0; // initial alarm state (off)
+int alarm_led_intensity = 0; // initial state of the blinking alarm led
+unsigned long timestamp = 0;
+byte tone_pitch[] = {240, 440};
+int tone_select = 0;
+
 void setup() {
   Serial.begin(115200);
   Wire.begin(11);
@@ -56,6 +66,10 @@ void setup() {
   pinMode(C2, INPUT);
   pinMode(C3, INPUT);
 
+  pinMode(BuzzerPin, OUTPUT);
+  pinMode(ledred, OUTPUT);
+  //pinMode(ledblue, OUTPUT);
+
   myservo.attach(ServoMoterPin);
   myservo.write(-90); // turns servo to the right position
 }
@@ -68,6 +82,16 @@ void loop() {
     Serial.println(charToSend[0]);
     Serial.println(charToSend[1]);
     Serial.println();
+  }
+
+  if (alarm_on_off){
+    if (timestamp + 200 < millis()){
+      alarm_led_intensity = !alarm_led_intensity;
+      digitalWrite(ledred, alarm_led_intensity);
+      tone_select = !tone_select;
+      //tone(BuzzerPin,tone_pitch[tone_select]);
+      timestamp = millis();
+    }
   }
 }
 /*
@@ -101,12 +125,10 @@ void reader(int howMany){
 
     case 'c': // Servo
       lockChange((int)strMessage[1]);
-      Serial.println(strMessage[0]);
-      Serial.println((int)strMessage[1]);
       break;
 
-    case 'd': 
-      
+    case 'd': // Control alarm
+      alarm((int)strMessage[1]);
       break;
 
     case 'e':
@@ -131,17 +153,49 @@ int lockChange(int lock){
     if (lock == 0){ //Opens the door.
       myservo.write(-180);
       positionCheck = 0;
-      Serial.println("Lock: 0");
+      Serial.println("Door opened");
+      alarm(0);
     }
     if(lock == 1){ //Lockes the door.
       myservo.write(180);
       positionCheck = 1;
-      Serial.println("Lock: 1");
+      Serial.println("Door locked");
     }
   }
   return lock;
 }
 
 
+void alarm(int on_off){ //If the door is locked and there is motion, then alarm starts
+  if(on_off){
+    Serial.println("alarm on");
+    alarm_on_off = 1;
+  } else{
+    Serial.println("alarm off");
+    alarm_on_off = 0;
+    noTone(BuzzerPin);
+    digitalWrite(ledred, LOW);
+  }
+}
 
-
+/*
+if(on_off){
+    Serial.println("alarm on");
+    tone(BuzzerPin,240);
+    digitalWrite(ledblue, HIGH);
+    delay(200);
+    digitalWrite(ledblue, LOW);
+    
+    delay(200);
+    tone(BuzzerPin,440);
+    delay(200);
+    digitalWrite(ledred, HIGH);
+    delay(500);
+    digitalWrite(ledred, LOW);
+    noTone(BuzzerPin);
+  } else{
+    Serial.println("alarm off");
+    digitalWrite(ledred, LOW);
+    noTone(BuzzerPin);
+  }
+*/

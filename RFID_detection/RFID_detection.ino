@@ -40,7 +40,7 @@ void setup() {
 }
 
 void loop() {
-  //writeDataToKey("CP");
+  //writeDataToKey("MP");
   readID(&access, &name[0]);
 
 }
@@ -106,7 +106,7 @@ bool checkAccess(byte *UID){
   return accessGranted;
 }
 
-void writeDataToKey(byte initials[2]){
+void writeDataToKey(char initials[2]){
 
   // Reset the loop if no new card present on the sensor/reader
 	if ( ! mfrc522.PICC_IsNewCardPresent()) {
@@ -129,25 +129,25 @@ void writeDataToKey(byte initials[2]){
     //Serial.println("Error in authentication");
     return;
   }
-  /*
+  
   else{
     Serial.println("Authentication succesful");
   }
-  */
+  
 
   
-  status = mfrc522.MIFARE_Write(blockNumber, initials, 16); //Try to write data
+  status = mfrc522.MIFARE_Write(blockNumber, (byte*)initials, 16); //Try to write data
 
   //Check for succes of write
   if(status != MFRC522::STATUS_OK){
-    //Serial.println("Failed writing data");
+    Serial.println("Failed writing data");
     return;
   }
-  /*
+  
   else{
     Serial.println("Data was written succesfully");
   }
-  */
+  
 
   mfrc522.PICC_HaltA(); //Prevents reditection of a card
 

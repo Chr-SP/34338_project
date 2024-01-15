@@ -1,5 +1,5 @@
 
-int BuzzerPin = 9;
+int BuzzerPin = 2;
 const byte ledblue = 3;
 const byte ledred = 5;
 bool Movement = true;
@@ -22,8 +22,8 @@ void loop() {
   }
 }
 
-void ALARM(int Position1, bool Movement){ //If the door is locked and there is motion, then alarm starts
-  if(Position1 == 1 && Movement == true){
+void ALARM(int door_locked, int movement){ //If the door is locked and there is motion, then alarm starts
+  if(door_locked && movement){
     tone(BuzzerPin,240);
     digitalWrite(ledblue, HIGH);
     delay(200);
@@ -34,6 +34,9 @@ void ALARM(int Position1, bool Movement){ //If the door is locked and there is m
     delay(200);
     digitalWrite(ledred, HIGH);
     delay(500);
+    digitalWrite(ledred, LOW);
+    noTone(BuzzerPin);
+  } else{
     digitalWrite(ledred, LOW);
     noTone(BuzzerPin);
   }
