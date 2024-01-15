@@ -11,6 +11,9 @@ ESP8266WiFiMulti wifiMulti;
 // Create an instance of the server
 ESP8266WebServer server(80);
 
+const char* ssid = "OnePlus";
+const char* server_password = "OnePlus123";
+
 const int lightSensorPin = A0;
 const int motionSensorIndoorPin = D0;
 const int motionSensorOutdoorPin = D3;
@@ -328,19 +331,13 @@ void handle_password() {                                               // If a P
     server.send(400, "text/plain", "400: Invalid Request");            // The request is invalid, so send HTTP status 400
     return;
   }
-
-  //----------------------------------
-  // Check for password longer than 3
-  // if (!server.hasArg("password") || server.arg("password") == NULL) {  // If the POST request doesn't have a password data
-  //   server.send(400, "text/plain", "400: Invalid Request");            // The request is invalid, so send HTTP status 400
-  //   return;
-  // }
-  //----------------------------------
-
-  if (server.arg("password")) {  // If both the username and the password are correct
+  // Check for password is 3 ing length
+  if ((server.arg("password").length()) != 3) {                                                        // If the POST request doesn't have a password data
+    server.send(400, "text/plain", "400: Invalid! Password has to have 3 characters long");            // The request is invalid, so send HTTP status 400
+    return;
+  }else if (server.arg("password")) {                                                                  // If both the username and the password are correct
     server.send(200, "text/html", "<h1>Your new password is, " + server.arg("password") + "!</h1><p>Password change successful</p>");
     from_String_to_CharArray(server.arg("password"), truePassword);
-    // Serial.println(truePassword);
   } else {  // Username and password don't match
     server.send(401, "text/plain", "401: Unauthorized");
   }
@@ -358,7 +355,7 @@ void handleNotFound() {
 void init_sever_connection() {
   // Connect to WiFi network
   Serial.println();
-  wifiMulti.addAP("Youcanforgetaboutit", "Anna1234");  // add Wi-Fi networks you want to connect to ##########################################################################
+  wifiMulti.addAP(ssid, server_password);  // add Wi-Fi networks you want to connect to ##########################################################################
 
   Serial.println();
   Serial.print("Connecting ...");
