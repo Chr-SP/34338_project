@@ -13,8 +13,8 @@ ESP8266WiFiMulti wifiMulti;
 // Create an instance of the server
 ESP8266WebServer server(80);
 
-const char* ssid = "OnePlus";
-const char* server_password = "OnePlus123";
+const char* ssid = "Youcanforgetaboutit";
+const char* server_password = "Anna1234";
 
 const int lightSensorPin = A0;
 const int motionSensorIndoorPin = D0;
@@ -28,17 +28,19 @@ const int KEYPAD_ON = 0;
 const int RFID_ON = 1;
 const int ALARM_ON = 1;
 const int ALARM_OFF = 0;
+const int LIGHT_ON = 1;
+const int LIGHT_OFF = 0;
 
 uint8_t keypad_RFID_select = RFID_ON;   // control variable to switch between RFID and keypad (1 fot RFID, 0 for keypad)
 uint8_t alarm_on_off = 0;  // control variable for the alarm (0 for off)
 
-const char INSIDE_LED = 'a';
+const char INDOOR_LED = 'a';
 const char OUTDOOR_LED = 'b';
 const char SERVOCONTROL = 'c';  // Servo destination?
 const char ALARMCONTROL = 'd';
 
 
-int lightThreshold = 100;  //A threshold that controls when light level is low
+int lightThreshold = 160;  //A threshold that controls when light level is low
 int lockPosition = OPENDOOR;      // position of the servo / lock
 
 
@@ -131,11 +133,13 @@ void loop() {
 
   server.handleClient();
 
-  /*
+  
   // Check lighting
-  lightsystemIndoor(position);
+  Serial.println(digitalRead(motionSensorOutdoorPin));
+
+  lightsystemIndoor(lockPosition);
   lightsystemOutdoor();
-  */
+  
   motionAlarm(lockPosition);
 
   readID(&access, &name[0]);
@@ -250,14 +254,10 @@ void lightsystemIndoor(int lockPosition) {
   int lightLevel = analogRead(lightSensorPin);
 
   if ((lightLevel > lightThreshold) || (!digitalRead(motionSensorIndoorPin))) {  //when there is light (light level is higher than threshold), then turn off LED
-    toSend[0] = 'a';
-    toSend[1] = 0;
-    sendMessage(toSend);
+    slaveControlWord(INDOOR_LED, LIGHT_OFF);
   } else if ((lockPosition == 0) && (digitalRead(motionSensorIndoorPin))) {  // If it is dark (light level is less than threshold) turn on LED an amout dependet on how dark it is.
     int light = 255 - lightLevel * 254 / lightThreshold;   // SKAL SKALERES YDERLIGERE
-    toSend[0] = 'a';
-    toSend[1] = light;  // light
-    sendMessage(toSend);
+    slaveControlWord(INDOOR_LED, light);
   }
 }
 
@@ -265,13 +265,9 @@ void lightsystemOutdoor() {
   int lightLevel = analogRead(lightSensorPin);
 
   if ((lightLevel > lightThreshold) || (!digitalRead(motionSensorOutdoorPin))) {
-    toSend[0] = 'b';
-    toSend[1] = 0;  // Outside LED off
-    sendMessage(toSend);
+    slaveControlWord(OUTDOOR_LED, LIGHT_OFF);
   } else {
-    toSend[0] = 'b';
-    toSend[1] = 1;  // Outside LED on
-    sendMessage(toSend);
+    slaveControlWord(OUTDOOR_LED, LIGHT_ON);
   }
 }
 
@@ -348,6 +344,8 @@ void handle_RFID_keypad() {  // If a POST request is made to URI /LED
 }
 void handle_user1() {
   user_text = " User1 has access";
+  userAccess[4] = {1, 0, 0, 0};  // users who have access              
+
   server_update_header();
 }
 void handle_user2() {
@@ -361,6 +359,7 @@ void handle_user3() {
 void handle_user4() {
   user_text = " User4 has access";
   server_update_header();
+  userAccess[4] = {1, 1, 1, 1};
 }
 
 void handle_alarm() {  // If a POST request is made to URI /LED
@@ -407,7 +406,7 @@ void handleNotFound() {
 void init_sever_connection() {
   // Connect to WiFi network
   Serial.println();
-  wifiMulti.addAP("ChristianPhone", "34338Christian");  // add Wi-Fi networks you want to connect to ##########################################################################
+  wifiMulti.addAP(ssid, server_password);  // add Wi-Fi networks you want to connect to ##########################################################################
 
   Serial.println();
   Serial.print("Connecting ...");
