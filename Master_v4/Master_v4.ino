@@ -64,6 +64,9 @@ String door_text = " Door is open";
 String RFID_text = " RFID is active";
 String user_text = " User 1 is active";
 String alarm_text = " Alarm is off";
+String user1_text = " User1 has access";
+String user2_text = " User2 has access";
+String user3_text = " User3 has access";
 
 char password[4] = { 0, 0, 0 };  // Password for keypad
 /* Handle functions for the server*/
@@ -84,10 +87,9 @@ MFRC522::MIFARE_Key key; //Defines a new instanse of the MIFARE key
 MFRC522::StatusCode status; //Defines an instanse of the status code
 //Matrix contaning ID's defined as valid
 byte validAccess[4][4] = {{0x63, 0xC8, 0xA0, 0x34},
-                          {0xF9, 0xAD, 0xD8, 0x15},
                           {0xB9, 0xE1, 0x6C, 0x14},
                           {0x53, 0xB2, 0x05, 0x34}};
-byte userAccess[4] = {1, 1, 1, 1};  // users who have access              
+byte userAccess[4] = {1, 1, 1};  // users who have access        
 bool access;
 char name[18];
 
@@ -343,23 +345,45 @@ void handle_RFID_keypad() {  // If a POST request is made to URI /LED
   server_update_header();
 }
 void handle_user1() {
-  user_text = " User1 has access";
-  userAccess[4] = {1, 0, 0, 0};  // users who have access              
-
+  userAccess[0] = !userAccess[0];
+  if (userAccess[0]){
+    user1_text = " User1 has access";
+  } else {
+    user1_text = " User1 has no access";
+  }    
   server_update_header();
 }
 void handle_user2() {
-  user_text = " User2 has access";
+  userAccess[1] = !userAccess[1];
+  if (userAccess[1]){
+    user2_text = " User2 has access";
+  } else {
+    user2_text = " User2 has no access";
+  }    
   server_update_header();
 }
 void handle_user3() {
-  user_text = " User3 has access";
+  userAccess[2] = !userAccess[2];
+  if (userAccess[2]){
+    user3_text = " User3 has access";
+  } else {
+    user3_text = " User3 has no access";
+  }    
   server_update_header();
 }
 void handle_user4() {
-  user_text = " User4 has access";
+  if (userAccess[0] && userAccess[1] && userAccess[2]){
+    user1_text = " User1 has no access";
+    user2_text = " User2 has no access";
+    user3_text = " User3 has no access";
+    byte userAccess[4] = {0, 0, 0};
+  } else {
+    user1_text = " User1 has access";
+    user2_text = " User2 has access";
+    user3_text = " User3 has access";
+    byte userAccess[4] = {1, 1, 1};
+  }    
   server_update_header();
-  userAccess[4] = {1, 1, 1, 1};
 }
 
 void handle_alarm() {  // If a POST request is made to URI /LED
