@@ -17,10 +17,10 @@ const char* ssid = "Youcanforgetaboutit";
 const char* server_password = "Anna1234";
 
 const int lightSensorPin = A0;
-const int motionSensorIndoorPin = D0;
-const int motionSensorOutdoorPin = D3;
-const int RST_PIN = D4;  // set Reset to digital pin 9
-const int SS_PIN = D8;   // set SDA to digital pin 10
+const int motionSensorIndoorPin = D0; // D0
+const int motionSensorOutdoorPin = D3; // D3
+const int RST_PIN = D4;  // set Reset to digital pin D4
+const int SS_PIN = D8;   // set SDA to digital pin D8
 
 const int LOCKDOOR = 0;
 const int OPENDOOR = 1;
@@ -31,8 +31,9 @@ const int ALARM_OFF = 0;
 const int LIGHT_ON = 1;
 const int LIGHT_OFF = 0;
 
-uint8_t keypad_RFID_select = RFID_ON;  // control variable to switch between RFID and keypad (1 fot RFID, 0 for keypad)
+uint8_t keypad_RFID_select = 0;  // control variable to switch between RFID and keypad (1 fot RFID, 0 for keypad)
 uint8_t alarm_on_off = 0;              // control variable for the alarm (0 for off)
+
 
 const char INDOOR_LED = 'a';
 const char OUTDOOR_LED = 'b';
@@ -42,6 +43,7 @@ const char ALARMCONTROL = 'd';
 
 int lightThreshold = 160;     //A threshold that controls when light level is low
 int lockPosition = OPENDOOR;  // position of the servo / lock
+int motionDetectedOutdoor = 0;
 
 
 char toSend[3] = { 0, 0 };  // the char defining a command to send to slave
@@ -55,13 +57,11 @@ int cursorPosition = 0;
 char truePassword[4] = { '9', '1', '1', 0 };
 int doClear = 0;
 unsigned long timestamp;
-//char* names[6] = { "JJ", "AW", "JK", "CT", "CP" };
-//int lock = 0; /////////////////////// Still needed?????
 
 
 /* Variable text strings used in HTML code*/
 String door_text = " Door is open";
-String RFID_text = " RFID is active";
+String RFID_text = " Keypad and RFID is active";
 String alarm_text = " Alarm is off";
 String user1_text = " has accsess";
 String user2_text = " has accsess";
@@ -103,14 +103,14 @@ void setup() {
 
   pinMode(lightSensorPin, INPUT_PULLUP);  // light sensor
   pinMode(motionSensorIndoorPin, INPUT);
-  pinMode(motionSensorOutdoorPin, INPUT);
+  //pinMode(motionSensorOutdoorPin, INPUT);
 
   // init LCD
   lcd.init();
   lcd.backlight();
   lcd.clear();
-  lcd.setCursor(0, 0);            //////////////////////////////////////////////////////////////
-  lcd.print("Enter password: ");  ////////////////////////////////////////////////////
+  lcd.setCursor(0, 0);            
+  lcd.print("Enter password: ");
 
   delay(10);
   server.on("/LOCK_DOOR", HTTP_POST, handle_door);
@@ -137,22 +137,23 @@ void loop() {
 
   server.handleClient();
 
-  Serial.println(digitalRead(motionSensorOutdoorPin));
+  //Serial.print("D3: ");
+  //Serial.println(digitalRead(motionSensorOutdoorPin));
+  //Serial.print("D0: ");
+  //Serial.println(digitalRead(motionSensorIndoorPin));
   // Check lighting
   lightsystemIndoor(lockPosition);
   lightsystemOutdoor();
 
   motionAlarm(lockPosition);
 
-  readID(&access, &name[0]);
   getMessage();
-  /*
-  if (keypad_RFID_select) { // RFID is selecet
+
+  if (keypad_RFID_select < 2) { // RFID is selecet
     readID(&access, &name[0]);
-  } else{
-    getMessage();
   }
-  */
+  
+  
   //delay(10);
 
   if ((doClear == 1) && (timestamp + 2000 < millis())) {  // check if clear is needed
@@ -162,7 +163,6 @@ void loop() {
     doClear = 0;
   }
 }
-
 
 
 void sendMessage(char toSend[]) {  // transmit command to slave
@@ -178,24 +178,17 @@ void slaveControlWord(char component, int stateValue) {
 }
 
 void getMessage() {
-  char recieved[3] = { 0, 0 };
-  Wire.requestFrom(11, 2);
+  char recieved[4] = { 0, 0, 0};
+  Wire.requestFrom(11, 3);
   int i = 0;
   while (Wire.available()) {
     recieved[i] = Wire.read();
     i++;
   }
 
-  /*
-  if ((doClear == 1) && (timestamp + 2000 < millis())) {  // check if clear is needed
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Enter password: ");
-    doClear = 0;
-  }
-  */
+  motionDetectedOutdoor = (int)recieved[2];
 
-  if (recieved[0] == 'k') {  ///////////////////dont ask why it's not 'k'
+  if ((keypad_RFID_select != 1) && (recieved[0] == 'k')) {  ///////////////////dont ask why it's not 'k'
 
     // Serial.println(recieved[1]);
     lcd.setCursor(0, 0);
@@ -266,9 +259,9 @@ void lightsystemIndoor(int lockPosition) {
 void lightsystemOutdoor() {
   int lightLevel = analogRead(lightSensorPin);
 
-  if ((lightLevel > lightThreshold) || (!digitalRead(motionSensorOutdoorPin))) {
+  if ((lightLevel > lightThreshold) || (!motionDetectedOutdoor)) {
     slaveControlWord(OUTDOOR_LED, LIGHT_OFF);
-  } else {
+  } else if(motionDetectedOutdoor) {
     slaveControlWord(OUTDOOR_LED, LIGHT_ON);
   }
 }
@@ -278,22 +271,6 @@ void motionAlarm(int lockPosition) {
     handle_alarm();
   }
 }
-
-
-/*
-bool motionSensed(int whichMotionSensor) {
-  bool motionSensed = digitalRead(whichMotionSensor);
-  return motionSensed;
-}
-*/
-
-/*
-void servoLock(int control_door, char slave_servo_lock) {
-  toSend[0] = slave_servo_lock;
-  toSend[1] = control_door;  // Lock the servo
-  sendMessage(toSend);
-}
-*/
 
 void handleRoot() {  // When URI / is requested, send a web page with a button to toggle the LED
   server.send(200, "text/html", "<html><title>Internet of Things - Demonstration</title><meta charset=\"utf8\" \/> \ 
@@ -338,11 +315,15 @@ void handle_door() {   // If a POST request is made to URI /LED
 }
 
 void handle_RFID_keypad() {  // If a POST request is made to URI /LED
-  keypad_RFID_select = !keypad_RFID_select;
-  if (keypad_RFID_select) {
+  if (keypad_RFID_select == 0) {
     RFID_text = " RFID is active";
-  } else {
+    keypad_RFID_select = 1;
+  } else if (keypad_RFID_select == 1) {
     RFID_text = " Keypad is active";
+    keypad_RFID_select = 2;
+  } else {
+    RFID_text = " Keypad and RFID is active";
+    keypad_RFID_select = 0;
   }
   server_update_header();
 }
@@ -443,6 +424,7 @@ void from_String_to_CharArray(const String& S_word, char* Array) {
 void handleNotFound() {
   server.send(404, "text/plain", "404: Not found");  // Send HTTP status 404 (Not Found) when there's no handler for the URI in the request
 }
+
 void init_sever_connection() {
   // Connect to WiFi network
   Serial.println();
@@ -473,7 +455,6 @@ void init_sever_connection() {
   server.begin();
   Serial.println("Server started");
 }
-
 
 void readID(bool* a, char* n) {
   byte UID[4];
