@@ -135,10 +135,8 @@ void loop() {
 
   server.handleClient();
 
-
-  // Check lighting
   Serial.println(digitalRead(motionSensorOutdoorPin));
-
+  // Check lighting
   lightsystemIndoor(lockPosition);
   lightsystemOutdoor();
 
