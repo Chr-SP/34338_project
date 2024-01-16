@@ -5,13 +5,13 @@
 
 Servo myservo;
 
-const int IndoorLEDPin = 5; // D5 - PVM
-const int OutdoorLEDPin = 4; // D4
-const int ServoMoterPin = 3; // D3
+const int IndoorLEDPin = 5; //PVM
+const int OutdoorLEDPin = 4; //
+const int ServoMoterPin = 3; //
+const int motionSensorOutdoorPin = A2; // A2
 
 const int BuzzerPin = 2;
 const int ledred = 13;
-//const int ledblue = 13;
 
 // Keypad is inspired by https://projecthub.arduino.cc/mckean0/keypad-entry-lock-2d9999#
 // defining 7 pin numberes for the keypad
@@ -37,7 +37,7 @@ byte rowPins[KEYPADROWS] = {R1, R2, R3, R4};
 byte colPins[KEYPADCOLS] = {C1, C2, C3};
 Keypad keypad_door = Keypad(makeKeymap(keys), rowPins, colPins, KEYPADROWS, KEYPADCOLS);
 
-char charToSend[3] = {0, 0}; ///////////////////////////////////////////////////////////////////////////////////////
+char charToSend[4] = {0, 0, 0}; ///////////////////////////////////////////////////////////////////////////////////////
 char keyTemp = NO_KEY;
 
 int positionCheck = 0; // initial servo position
@@ -56,6 +56,8 @@ void setup() {
 
   pinMode(IndoorLEDPin, OUTPUT);
   pinMode(OutdoorLEDPin, OUTPUT);
+
+  pinMode(motionSensorOutdoorPin, INPUT);
 
   // keypad pins
   pinMode(R1, INPUT);
@@ -77,12 +79,11 @@ int test = 0;
 void loop() {
   keyTemp = keypad_door.getKey();
   if (keyTemp != NO_KEY){
-    charToSend[0] = 107; // k in ASCII  //////////////////////////////////////////////////////////
+    charToSend[0] = 107; // k in ASCII
     charToSend[1] = keyTemp;
-    Serial.println(charToSend[0]);
-    Serial.println(charToSend[1]);
-    Serial.println();
   }
+
+  charToSend[2] = (char)digitalRead(motionSensorOutdoorPin);
 
   if (alarm_on_off){
     if (timestamp + 200 < millis()){
@@ -94,25 +95,12 @@ void loop() {
     }
   }
 }
-/*
-char* buildMessage(int howMany){
-  char strMessage[20];
-  for(int i=0; i<howMany; i++){
-    char tempChar = Wire.read();
-    strcat(strMessage,tempChar);
-  }
-  return strMessage;
-}
-*/
 
 void reader(int howMany){
   char strMessage[3] = {0,0};
   for(int i=0; i<howMany; i++){
     strMessage[i] = Wire.read();
   }
-
-  // Serial.print(strMessage[0]);
-  // Serial.println((int)strMessage[1]);
 
   switch (strMessage[0]) {     // ensuring both upper and lower case works
     case 'a': // Inside LED
@@ -130,19 +118,14 @@ void reader(int howMany){
     case 'd': // Control alarm
       alarm((int)strMessage[1]);
       break;
-
-    case 'e':
-      
-      break;
   }
 }
 
 void request(){
   Wire.write(charToSend[0]);
   Wire.write(charToSend[1]);
+  Wire.write(charToSend[2]);
   memset(charToSend, 0, sizeof(charToSend));
-  //charToSend[0] = 0;
-  //charToSend[1] = 0;
 }
 
 
@@ -177,25 +160,3 @@ void alarm(int on_off){ //If the door is locked and there is motion, then alarm 
     digitalWrite(ledred, LOW);
   }
 }
-
-/*
-if(on_off){
-    Serial.println("alarm on");
-    tone(BuzzerPin,240);
-    digitalWrite(ledblue, HIGH);
-    delay(200);
-    digitalWrite(ledblue, LOW);
-    
-    delay(200);
-    tone(BuzzerPin,440);
-    delay(200);
-    digitalWrite(ledred, HIGH);
-    delay(500);
-    digitalWrite(ledred, LOW);
-    noTone(BuzzerPin);
-  } else{
-    Serial.println("alarm off");
-    digitalWrite(ledred, LOW);
-    noTone(BuzzerPin);
-  }
-*/

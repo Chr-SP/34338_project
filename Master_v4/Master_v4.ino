@@ -16,11 +16,12 @@ ESP8266WebServer server(80);
 const char* ssid = "Youcanforgetaboutit";
 const char* server_password = "Anna1234";
 
+
 const int lightSensorPin = A0;
-const int motionSensorIndoorPin = D0;
-const int motionSensorOutdoorPin = D3;
-const int RST_PIN = D4;  // set Reset to digital pin 9
-const int SS_PIN = D8;   // set SDA to digital pin 10
+const int motionSensorIndoorPin = D0; // D0
+const int motionSensorOutdoorPin = D3; // D3
+const int RST_PIN = D4;  // set Reset to digital pin D4
+const int SS_PIN = D8;   // set SDA to digital pin D8
 
 const int LOCKDOOR = 0;
 const int OPENDOOR = 1;
@@ -31,8 +32,9 @@ const int ALARM_OFF = 0;
 const int LIGHT_ON = 1;
 const int LIGHT_OFF = 0;
 
-uint8_t keypad_RFID_select = RFID_ON;  // control variable to switch between RFID and keypad (1 fot RFID, 0 for keypad)
+uint8_t keypad_RFID_select = 0;  // control variable to switch between RFID and keypad (1 fot RFID, 0 for keypad)
 uint8_t alarm_on_off = 0;              // control variable for the alarm (0 for off)
+
 
 const char INDOOR_LED = 'a';
 const char OUTDOOR_LED = 'b';
@@ -42,6 +44,7 @@ const char ALARMCONTROL = 'd';
 
 int lightThreshold = 160;     //A threshold that controls when light level is low
 int lockPosition = OPENDOOR;  // position of the servo / lock
+int motionDetectedOutdoor = 0;
 
 
 char toSend[3] = { 0, 0 };  // the char defining a command to send to slave
@@ -55,17 +58,17 @@ int cursorPosition = 0;
 char truePassword[4] = { '9', '1', '1', 0 };
 int doClear = 0;
 unsigned long timestamp;
-//char* names[6] = { "JJ", "AW", "JK", "CT", "CP" };
-//int lock = 0; /////////////////////// Still needed?????
 
 
 /* Variable text strings used in HTML code*/
 String door_text = " Door is open";
-String RFID_text = " RFID is active";
+String RFID_text = " Keypad and RFID is active";
 String alarm_text = " Alarm is off";
 String user1_text = " has accsess";
 String user2_text = " has accsess";
 String user3_text = " has accsess";
+String password_error_text = "";
+
 
 
 char password[4] = { 0, 0, 0 };  // Password for keypad
@@ -77,7 +80,7 @@ void handle_RFID_keypad();
 void handle_user1();
 void handle_user2();
 void handle_user3();
-void handle_user4();
+void handle_all_users();
 void handle_alarm();
 void handle_password();
 
@@ -86,11 +89,10 @@ MFRC522 mfrc522(SS_PIN, RST_PIN);  //Define a new RFC reader
 MFRC522::MIFARE_Key key;           //Defines a new instanse of the MIFARE key
 MFRC522::StatusCode status;        //Defines an instanse of the status code
 //Matrix contaning ID's defined as valid
-byte validAccess[4][4] = { { 0x63, 0xC8, 0xA0, 0x34 },
-                           { 0xF9, 0xAD, 0xD8, 0x15 },
-                           { 0xB9, 0xE1, 0x6C, 0x14 },
-                           { 0x53, 0xB2, 0x05, 0x34 } };
-byte userAccess[4] = { 1, 1, 1, 1 };  // users who have access
+byte validAccess[4][4] = {{0x63, 0xC8, 0xA0, 0x34},
+                          {0xB9, 0xE1, 0x6C, 0x14},
+                          {0x53, 0xB2, 0x05, 0x34}};
+byte userAccess[4] = {1, 1, 1};  // users who have access        
 bool access;
 char name[18];
 
@@ -102,14 +104,14 @@ void setup() {
 
   pinMode(lightSensorPin, INPUT_PULLUP);  // light sensor
   pinMode(motionSensorIndoorPin, INPUT);
-  pinMode(motionSensorOutdoorPin, INPUT);
+  //pinMode(motionSensorOutdoorPin, INPUT);
 
   // init LCD
   lcd.init();
   lcd.backlight();
   lcd.clear();
-  lcd.setCursor(0, 0);            //////////////////////////////////////////////////////////////
-  lcd.print("Enter password: ");  ////////////////////////////////////////////////////
+  lcd.setCursor(0, 0);            
+  lcd.print("Enter password: ");
 
   delay(10);
   server.on("/LOCK_DOOR", HTTP_POST, handle_door);
@@ -117,7 +119,7 @@ void setup() {
   server.on("/User1", HTTP_POST, handle_user1);
   server.on("/User2", HTTP_POST, handle_user2);
   server.on("/User3", HTTP_POST, handle_user3);
-  server.on("/User4", HTTP_POST, handle_user4);
+  server.on("/AllUsers", HTTP_POST, handle_all_users);
   server.on("/ALARMON", HTTP_POST, handle_alarm);
   server.on("/PASSWORD", HTTP_POST, handle_password);
 
@@ -132,28 +134,32 @@ void setup() {
 }
 
 void loop() {
-  char toSend[3] = { 0, 0 };
 
   server.handleClient();
 
-
+  //Serial.print("D3: ");
+  //Serial.println(digitalRead(motionSensorOutdoorPin));
+  //Serial.print("D0: ");
+  //Serial.println(digitalRead(motionSensorIndoorPin));
   // Check lighting
-  Serial.println(digitalRead(motionSensorOutdoorPin));
+  // Serial.println(digitalRead(motionSensorOutdoorPin));
+
+
+  // Serial.println(digitalRead(motionSensorOutdoorPin));
+  // Check lighting
 
   lightsystemIndoor(lockPosition);
   lightsystemOutdoor();
 
   motionAlarm(lockPosition);
 
-  readID(&access, &name[0]);
   getMessage();
-  /*
-  if (keypad_RFID_select) { // RFID is selecet
+
+  if (keypad_RFID_select < 2) { // RFID is selecet
     readID(&access, &name[0]);
-  } else{
-    getMessage();
   }
-  */
+  
+  
   //delay(10);
 
   if ((doClear == 1) && (timestamp + 2000 < millis())) {  // check if clear is needed
@@ -163,7 +169,6 @@ void loop() {
     doClear = 0;
   }
 }
-
 
 
 void sendMessage(char toSend[]) {  // transmit command to slave
@@ -179,24 +184,17 @@ void slaveControlWord(char component, int stateValue) {
 }
 
 void getMessage() {
-  char recieved[3] = { 0, 0 };
-  Wire.requestFrom(11, 2);
+  char recieved[4] = { 0, 0, 0};
+  Wire.requestFrom(11, 3);
   int i = 0;
   while (Wire.available()) {
     recieved[i] = Wire.read();
     i++;
   }
 
-  /*
-  if ((doClear == 1) && (timestamp + 2000 < millis())) {  // check if clear is needed
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Enter password: ");
-    doClear = 0;
-  }
-  */
+  motionDetectedOutdoor = (int)recieved[2];
 
-  if (recieved[0] == 'k') {  ///////////////////dont ask why it's not 'k'
+  if ((keypad_RFID_select != 1) && (recieved[0] == 'k')) {  ///////////////////dont ask why it's not 'k'
 
     // Serial.println(recieved[1]);
     lcd.setCursor(0, 0);
@@ -267,9 +265,9 @@ void lightsystemIndoor(int lockPosition) {
 void lightsystemOutdoor() {
   int lightLevel = analogRead(lightSensorPin);
 
-  if ((lightLevel > lightThreshold) || (!digitalRead(motionSensorOutdoorPin))) {
+  if ((lightLevel > lightThreshold) || (!motionDetectedOutdoor)) {
     slaveControlWord(OUTDOOR_LED, LIGHT_OFF);
-  } else {
+  } else if(motionDetectedOutdoor) {
     slaveControlWord(OUTDOOR_LED, LIGHT_ON);
   }
 }
@@ -280,44 +278,30 @@ void motionAlarm(int lockPosition) {
   }
 }
 
-
-/*
-bool motionSensed(int whichMotionSensor) {
-  bool motionSensed = digitalRead(whichMotionSensor);
-  return motionSensed;
-}
-*/
-
-/*
-void servoLock(int control_door, char slave_servo_lock) {
-  toSend[0] = slave_servo_lock;
-  toSend[1] = control_door;  // Lock the servo
-  sendMessage(toSend);
-}
-*/
-
 void handleRoot() {  // When URI / is requested, send a web page with a button to toggle the LED
-  server.send(200, "text/html", "<html><title>Internet of Things - Demonstration</title><meta charset=\"utf8\" \/> \ 
+  server.send(200, "text/html", "<html><title>Internet of Things - Demonstration</title><meta charset=\"utf8\">\
       </head><body><h1>Smart Home Security System</h1> \
       <p>Lock or unlock door</p> \
-      <form action=\"/LOCK_DOOR\" method=\"POST\" ><input type=\"submit\" value=\"Lock door\"style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\";<p>"
-                                  + door_text + " <p></form> \ 
+      <form action=\"/LOCK_DOOR\" method=\"POST\" ><input type=\"submit\" value=\"Lock door\"style=\"width:100px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\";<p>"
+                                  + door_text + " <p></form>\
       <p>Change between RFID or Keypad<p> \
-      <form action=\"/RFID\" method=\"POST\" ><input type=\"submit\" value=\"RFID keypad\"style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\";<p>"
+      <form action=\"/RFID\" method=\"POST\" ><input type=\"submit\" value=\"RFID keypad\"style=\"width:100px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\";<p>"
                                   + RFID_text + " <p></form> \
       <p>Turn alarm on or off<p>\
-      <form action=\"/ALARMON\" method=\"POST\" ><input type=\"submit\" value=\"Alarm on\" style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\";<p>"
+      <form action=\"/ALARMON\" method=\"POST\" ><input type=\"submit\" value=\"Alarm on\" style=\"width:100px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\";<p>"
                                   + alarm_text + " <p></form> \
       <p>Person RFID access<p>\
-      <form action=\"/User1\" method=\"POST\" ><input type=\"submit\" value=\"User1\" style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\"; <p>" 
+      <form action=\"/User1\" method=\"POST\" ><input type=\"submit\" value=\"User1\" style=\"width:100px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\"; <p>" 
                                   + user1_text +"<p></form> \
-      <form action=\"/User2\" method=\"POST\" ><input type=\"submit\" value=\"User2\" style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\"; <p>" 
+      <form action=\"/User2\" method=\"POST\" ><input type=\"submit\" value=\"User2\" style=\"width:100px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\"; <p>" 
                                   + user2_text +"<p></form> \
-      <form action=\"/User3\" method=\"POST\" ><input type=\"submit\" value=\"User3\" style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\"; <p>" 
+      <form action=\"/User3\" method=\"POST\" ><input type=\"submit\" value=\"User3\" style=\"width:100px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\"; <p>" 
                                   + user3_text +"<p></form> \
-      <form action=\"/User4\" method=\"POST\" ><input type=\"submit\" value=\"User4\" style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\"></form> \
+      <form action=\"/AllUsers\" method=\"POST\" ><input type=\"submit\" value=\"All users\" style=\"width:100px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\"></form> \
       <p>Change keypad code<p>\
       <form action =\"/PASSWORD\" method=\"POST\"><input type=\"password\" name=\"password\" placeholder=\"Password\"></br><input type=\"submit\" value=\"Change password\"></form> \
+      <p>"+ password_error_text + "<p>\
+      <p>""Your current password is: " + truePassword +  "<p>\
       </body></html>");
 }
 void server_update_header() {
@@ -338,32 +322,62 @@ void handle_door() {   // If a POST request is made to URI /LED
 }
 
 void handle_RFID_keypad() {  // If a POST request is made to URI /LED
-  keypad_RFID_select = !keypad_RFID_select;
-  if (keypad_RFID_select) {
+  if (keypad_RFID_select == 0) {
     RFID_text = " RFID is active";
-  } else {
+    keypad_RFID_select = 1;
+  } else if (keypad_RFID_select == 1) {
     RFID_text = " Keypad is active";
+    keypad_RFID_select = 2;
+  } else {
+    RFID_text = " Keypad and RFID is active";
+    keypad_RFID_select = 0;
   }
   server_update_header();
 }
 void handle_user1() {
-  user_text = " User1 has access";
-  userAccess[4] = { 1, 0, 0, 0 };  // users who have access
-
+  userAccess[0] = !userAccess[0];
+  if (userAccess[0]){
+    user1_text = " has access";
+  } else {
+    user1_text = "";
+  }    
   server_update_header();
 }
 void handle_user2() {
-  user_text = " User2 has access";
+  userAccess[1] = !userAccess[1];
+  if (userAccess[1]){
+    user2_text = " has access";
+  } else {
+    user2_text = "";
+  }    
   server_update_header();
 }
 void handle_user3() {
-  user_text = " User3 has access";
+  userAccess[2] = !userAccess[2];
+  if (userAccess[2]){
+    user3_text = " has access";
+  } else {
+    user3_text = "";
+  }    
   server_update_header();
 }
-void handle_user4() {
-  user_text = " User4 has access";
+void handle_all_users() {
+  if (userAccess[0] && userAccess[1] && userAccess[2]){
+    user1_text = "";
+    user2_text = "";
+    user3_text = "";
+    for (int i; i<3; i++){
+      userAccess[i] = 0;
+    }
+  } else {
+    user1_text = " has access";
+    user2_text = " has access";
+    user3_text = " has access";
+    for (int i; i<3; i++){
+      userAccess[i] = 1;
+    }
+  }    
   server_update_header();
-  userAccess[4] = { 1, 1, 1, 1 };
 }
 
 void handle_alarm() {  // If a POST request is made to URI /LED
@@ -383,18 +397,28 @@ void handle_alarm() {  // If a POST request is made to URI /LED
 
 void handle_password() {                                               // If a POST request is made to URI /login
   if (!server.hasArg("password") || server.arg("password") == NULL) {  // If the POST request doesn't have a password data
-    server.send(400, "text/plain", "400: Invalid Request");            // The request is invalid, so send HTTP status 400
+  password_error_text = "Invalid Request. ";
+    // server.send(400, "text/plain", "400: Invalid Request");            // The request is invalid, so send HTTP status 400
+    server_update_header();
+
     return;
   }
   // Check for password is 3 ing length
-  if ((server.arg("password").length()) != 3) {                                              // If the POST request doesn't have a password data
-    server.send(400, "text/plain", "400: Invalid! Password has to have 3 characters long");  // The request is invalid, so send HTTP status 400
+  if ((server.arg("password").length()) != 3) {   
+    password_error_text = "Invalid Password! It has to be 3 characters. ";                                         // If the POST request doesn't have a password data
+    // server.send(400, "text/plain", "400: Invalid! Password has to have 3 characters long");  // The request is invalid, so send HTTP status 400
+    server_update_header();
+
     return;
   } else if (server.arg("password")) {  // If both the username and the password are correct
-    server.send(200, "text/html", "<h1>Your new password is, " + server.arg("password") + "!</h1><p>Password change successful</p>");
+    // server.send(200, "text/html", "<h1>Your new password is, " + server.arg("password") + "!</h1><p>Password change successful</p>");
     from_String_to_CharArray(server.arg("password"), truePassword);
+    password_error_text = "Password change successful";
+    server_update_header();
   } else {  // Username and password don't match
-    server.send(401, "text/plain", "401: Unauthorized");
+    // server.send(401, "text/plain", "401: Unauthorized");
+    password_error_text = "Unauthorized ";
+    server_update_header();
   }
 }
 
@@ -407,6 +431,7 @@ void from_String_to_CharArray(const String& S_word, char* Array) {
 void handleNotFound() {
   server.send(404, "text/plain", "404: Not found");  // Send HTTP status 404 (Not Found) when there's no handler for the URI in the request
 }
+
 void init_sever_connection() {
   // Connect to WiFi network
   Serial.println();
@@ -437,7 +462,6 @@ void init_sever_connection() {
   server.begin();
   Serial.println("Server started");
 }
-
 
 void readID(bool* a, char* n) {
   byte UID[4];
