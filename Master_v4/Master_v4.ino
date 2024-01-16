@@ -66,6 +66,8 @@ String alarm_text = " Alarm is off";
 String user1_text = " has accsess";
 String user2_text = " has accsess";
 String user3_text = " has accsess";
+String password_error_text = "";
+
 
 
 char password[4] = { 0, 0, 0 };  // Password for keypad
@@ -317,6 +319,7 @@ void handleRoot() {  // When URI / is requested, send a web page with a button t
       <form action=\"/User4\" method=\"POST\" ><input type=\"submit\" value=\"User4\" style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\"></form> \
       <p>Change keypad code<p>\
       <form action =\"/PASSWORD\" method=\"POST\"><input type=\"password\" name=\"password\" placeholder=\"Password\"></br><input type=\"submit\" value=\"Change password\"></form> \
+      <p>""Current password" + password_error_text + truePassword +  "<p>\
       </body></html>");
 }
 void server_update_header() {
@@ -404,18 +407,28 @@ void handle_alarm() {  // If a POST request is made to URI /LED
 
 void handle_password() {                                               // If a POST request is made to URI /login
   if (!server.hasArg("password") || server.arg("password") == NULL) {  // If the POST request doesn't have a password data
-    server.send(400, "text/plain", "400: Invalid Request");            // The request is invalid, so send HTTP status 400
+  password_error_text = "Invalid Request. ";
+    // server.send(400, "text/plain", "400: Invalid Request");            // The request is invalid, so send HTTP status 400
+    server_update_header();
+
     return;
   }
   // Check for password is 3 ing length
-  if ((server.arg("password").length()) != 3) {                                              // If the POST request doesn't have a password data
-    server.send(400, "text/plain", "400: Invalid! Password has to have 3 characters long");  // The request is invalid, so send HTTP status 400
+  if ((server.arg("password").length()) != 3) {   
+    password_error_text = "Invalid Password! It has to be 3 characters. ";                                         // If the POST request doesn't have a password data
+    // server.send(400, "text/plain", "400: Invalid! Password has to have 3 characters long");  // The request is invalid, so send HTTP status 400
+    server_update_header();
+
     return;
   } else if (server.arg("password")) {  // If both the username and the password are correct
-    server.send(200, "text/html", "<h1>Your new password is, " + server.arg("password") + "!</h1><p>Password change successful</p>");
+    // server.send(200, "text/html", "<h1>Your new password is, " + server.arg("password") + "!</h1><p>Password change successful</p>");
     from_String_to_CharArray(server.arg("password"), truePassword);
+    password_error_text = "Your new password is: ";
+    server_update_header();
   } else {  // Username and password don't match
-    server.send(401, "text/plain", "401: Unauthorized");
+    // server.send(401, "text/plain", "401: Unauthorized");
+    password_error_text = "Unauthorized";
+    server_update_header();
   }
 }
 
