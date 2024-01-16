@@ -16,6 +16,7 @@ ESP8266WebServer server(80);
 const char* ssid = "Youcanforgetaboutit";
 const char* server_password = "Anna1234";
 
+
 const int lightSensorPin = A0;
 const int motionSensorIndoorPin = D0;
 const int motionSensorOutdoorPin = D3;
@@ -143,7 +144,7 @@ void loop() {
   // Serial.println(digitalRead(motionSensorOutdoorPin));
 
 
-  Serial.println(digitalRead(motionSensorOutdoorPin));
+  // Serial.println(digitalRead(motionSensorOutdoorPin));
   // Check lighting
 
   lightsystemIndoor(lockPosition);
@@ -303,7 +304,7 @@ void servoLock(int control_door, char slave_servo_lock) {
 */
 
 void handleRoot() {  // When URI / is requested, send a web page with a button to toggle the LED
-  server.send(200, "text/html", "<html><title>Internet of Things - Demonstration</title><meta charset=\"utf8\" \/> \ 
+  server.send(200, "text/html", "<html><title>Internet of Things - Demonstration</title><meta charset=\"utf8\">\
       </head><body><h1>Smart Home Security System</h1> \
       <p>Lock or unlock door</p> \
       <form action=\"/LOCK_DOOR\" method=\"POST\" ><input type=\"submit\" value=\"Lock door\"style=\"width:100px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\";<p>"
