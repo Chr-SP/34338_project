@@ -19,7 +19,6 @@ const char* server_password = "Anna1234";
 
 const int lightSensorPin = A0;
 const int motionSensorIndoorPin = D0; // D0
-const int motionSensorOutdoorPin = D3; // D3
 const int RST_PIN = D4;  // set Reset to digital pin D4
 const int SS_PIN = D8;   // set SDA to digital pin D8
 
@@ -104,7 +103,6 @@ void setup() {
 
   pinMode(lightSensorPin, INPUT_PULLUP);  // light sensor
   pinMode(motionSensorIndoorPin, INPUT);
-  //pinMode(motionSensorOutdoorPin, INPUT);
 
   // init LCD
   lcd.init();
@@ -137,17 +135,9 @@ void loop() {
 
   server.handleClient();
 
-  //Serial.print("D3: ");
-  //Serial.println(digitalRead(motionSensorOutdoorPin));
-  //Serial.print("D0: ");
-  //Serial.println(digitalRead(motionSensorIndoorPin));
+  char toSend[3] = { 0, 0 };
+
   // Check lighting
-  // Serial.println(digitalRead(motionSensorOutdoorPin));
-
-
-  // Serial.println(digitalRead(motionSensorOutdoorPin));
-  // Check lighting
-
   lightsystemIndoor(lockPosition);
   lightsystemOutdoor();
 
@@ -159,8 +149,6 @@ void loop() {
     readID(&access, &name[0]);
   }
   
-  
-  //delay(10);
 
   if ((doClear == 1) && (timestamp + 2000 < millis())) {  // check if clear is needed
     lcd.clear();
