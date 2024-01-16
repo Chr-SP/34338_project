@@ -348,40 +348,40 @@ void handle_RFID_keypad() {  // If a POST request is made to URI /LED
 void handle_user1() {
   userAccess[0] = !userAccess[0];
   if (userAccess[0]){
-    user1_text = " User1 has access";
+    user1_text = " has access";
   } else {
-    user1_text = " User1 has no access";
+    user1_text = "";
   }    
   server_update_header();
 }
 void handle_user2() {
   userAccess[1] = !userAccess[1];
   if (userAccess[1]){
-    user2_text = " User2 has access";
+    user2_text = " has access";
   } else {
-    user2_text = " User2 has no access";
+    user2_text = "";
   }    
   server_update_header();
 }
 void handle_user3() {
   userAccess[2] = !userAccess[2];
   if (userAccess[2]){
-    user3_text = " User3 has access";
+    user3_text = " has access";
   } else {
-    user3_text = " User3 has no access";
+    user3_text = "";
   }    
   server_update_header();
 }
 void handle_user4() {
   if (userAccess[0] && userAccess[1] && userAccess[2]){
-    user1_text = " User1 has no access";
-    user2_text = " User2 has no access";
-    user3_text = " User3 has no access";
+    user1_text = "";
+    user2_text = "";
+    user3_text = "";
     byte userAccess[4] = {0, 0, 0};
   } else {
-    user1_text = " User1 has access";
-    user2_text = " User2 has access";
-    user3_text = " User3 has access";
+    user1_text = " has access";
+    user2_text = " has access";
+    user3_text = " has access";
     byte userAccess[4] = {1, 1, 1};
   }    
   server_update_header();
