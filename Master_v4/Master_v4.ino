@@ -380,12 +380,16 @@ void handle_user4() {
     user1_text = "";
     user2_text = "";
     user3_text = "";
-    byte userAccess[4] = {0, 0, 0};
+    for (int i; i<3; i++){
+      userAccess[i] = 0;
+    }
   } else {
     user1_text = " has access";
     user2_text = " has access";
     user3_text = " has access";
-    byte userAccess[4] = {1, 1, 1};
+    for (int i; i<3; i++){
+      userAccess[i] = 1;
+    }
   }    
   server_update_header();
 }
