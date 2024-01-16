@@ -16,6 +16,7 @@ ESP8266WebServer server(80);
 const char* ssid = "Youcanforgetaboutit";
 const char* server_password = "Anna1234";
 
+
 const int lightSensorPin = A0;
 const int motionSensorIndoorPin = D0; // D0
 const int motionSensorOutdoorPin = D3; // D3
@@ -79,7 +80,7 @@ void handle_RFID_keypad();
 void handle_user1();
 void handle_user2();
 void handle_user3();
-void handle_user4();
+void handle_all_users();
 void handle_alarm();
 void handle_password();
 
@@ -118,7 +119,7 @@ void setup() {
   server.on("/User1", HTTP_POST, handle_user1);
   server.on("/User2", HTTP_POST, handle_user2);
   server.on("/User3", HTTP_POST, handle_user3);
-  server.on("/User4", HTTP_POST, handle_user4);
+  server.on("/AllUsers", HTTP_POST, handle_all_users);
   server.on("/ALARMON", HTTP_POST, handle_alarm);
   server.on("/PASSWORD", HTTP_POST, handle_password);
 
@@ -133,7 +134,6 @@ void setup() {
 }
 
 void loop() {
-  char toSend[3] = { 0, 0 };
 
   server.handleClient();
 
@@ -142,6 +142,12 @@ void loop() {
   //Serial.print("D0: ");
   //Serial.println(digitalRead(motionSensorIndoorPin));
   // Check lighting
+  // Serial.println(digitalRead(motionSensorOutdoorPin));
+
+
+  // Serial.println(digitalRead(motionSensorOutdoorPin));
+  // Check lighting
+
   lightsystemIndoor(lockPosition);
   lightsystemOutdoor();
 
@@ -273,28 +279,29 @@ void motionAlarm(int lockPosition) {
 }
 
 void handleRoot() {  // When URI / is requested, send a web page with a button to toggle the LED
-  server.send(200, "text/html", "<html><title>Internet of Things - Demonstration</title><meta charset=\"utf8\" \/> \ 
+  server.send(200, "text/html", "<html><title>Internet of Things - Demonstration</title><meta charset=\"utf8\">\
       </head><body><h1>Smart Home Security System</h1> \
       <p>Lock or unlock door</p> \
-      <form action=\"/LOCK_DOOR\" method=\"POST\" ><input type=\"submit\" value=\"Lock door\"style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\";<p>"
-                                  + door_text + " <p></form> \ 
+      <form action=\"/LOCK_DOOR\" method=\"POST\" ><input type=\"submit\" value=\"Lock door\"style=\"width:100px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\";<p>"
+                                  + door_text + " <p></form>\
       <p>Change between RFID or Keypad<p> \
-      <form action=\"/RFID\" method=\"POST\" ><input type=\"submit\" value=\"RFID keypad\"style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\";<p>"
+      <form action=\"/RFID\" method=\"POST\" ><input type=\"submit\" value=\"RFID keypad\"style=\"width:100px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\";<p>"
                                   + RFID_text + " <p></form> \
       <p>Turn alarm on or off<p>\
-      <form action=\"/ALARMON\" method=\"POST\" ><input type=\"submit\" value=\"Alarm on\" style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\";<p>"
+      <form action=\"/ALARMON\" method=\"POST\" ><input type=\"submit\" value=\"Alarm on\" style=\"width:100px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\";<p>"
                                   + alarm_text + " <p></form> \
       <p>Person RFID access<p>\
-      <form action=\"/User1\" method=\"POST\" ><input type=\"submit\" value=\"User1\" style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\"; <p>" 
+      <form action=\"/User1\" method=\"POST\" ><input type=\"submit\" value=\"User1\" style=\"width:100px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\"; <p>" 
                                   + user1_text +"<p></form> \
-      <form action=\"/User2\" method=\"POST\" ><input type=\"submit\" value=\"User2\" style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\"; <p>" 
+      <form action=\"/User2\" method=\"POST\" ><input type=\"submit\" value=\"User2\" style=\"width:100px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\"; <p>" 
                                   + user2_text +"<p></form> \
-      <form action=\"/User3\" method=\"POST\" ><input type=\"submit\" value=\"User3\" style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\"; <p>" 
+      <form action=\"/User3\" method=\"POST\" ><input type=\"submit\" value=\"User3\" style=\"width:100px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\"; <p>" 
                                   + user3_text +"<p></form> \
-      <form action=\"/User4\" method=\"POST\" ><input type=\"submit\" value=\"User4\" style=\"width:60px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\"></form> \
+      <form action=\"/AllUsers\" method=\"POST\" ><input type=\"submit\" value=\"All users\" style=\"width:100px; height:20px; font-size:10px; background-color: #ff88cc; border-color: ##ff0080\"></form> \
       <p>Change keypad code<p>\
       <form action =\"/PASSWORD\" method=\"POST\"><input type=\"password\" name=\"password\" placeholder=\"Password\"></br><input type=\"submit\" value=\"Change password\"></form> \
-      <p>""Current password" + password_error_text + truePassword +  "<p>\
+      <p>"+ password_error_text + "<p>\
+      <p>""Your current password is: " + truePassword +  "<p>\
       </body></html>");
 }
 void server_update_header() {
@@ -354,7 +361,7 @@ void handle_user3() {
   }    
   server_update_header();
 }
-void handle_user4() {
+void handle_all_users() {
   if (userAccess[0] && userAccess[1] && userAccess[2]){
     user1_text = "";
     user2_text = "";
@@ -406,11 +413,11 @@ void handle_password() {                                               // If a P
   } else if (server.arg("password")) {  // If both the username and the password are correct
     // server.send(200, "text/html", "<h1>Your new password is, " + server.arg("password") + "!</h1><p>Password change successful</p>");
     from_String_to_CharArray(server.arg("password"), truePassword);
-    password_error_text = "Your new password is: ";
+    password_error_text = "Password change successful";
     server_update_header();
   } else {  // Username and password don't match
     // server.send(401, "text/plain", "401: Unauthorized");
-    password_error_text = "Unauthorized";
+    password_error_text = "Unauthorized ";
     server_update_header();
   }
 }
