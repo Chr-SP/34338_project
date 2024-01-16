@@ -1,65 +1,70 @@
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
-#include <ESP8266WiFi.h>
-#include <WiFiClient.h>
-#include <ESP8266WiFiMulti.h>  // Include the Wi-Fi-Multi library
-#include <ESP8266WebServer.h>  // Include the WebServer library
-#include <ESP8266mDNS.h>       // Include the mDNS library
-#include <SPI.h>
-#include <MFRC522.h>
-
-LiquidCrystal_I2C lcd(0x27, 16, 2);
-ESP8266WiFiMulti wifiMulti;
-// Create an instance of the server
-ESP8266WebServer server(80);
-
-const char* ssid = "Youcanforgetaboutit";
-const char* server_password = "Anna1234";
+/*
 
 
+*/
+
+#include <Wire.h>               // I2C for master / slave communication
+#include <LiquidCrystal_I2C.h>  // LCD library
+#include <WiFiClient.h>         // Wifi
+#include <ESP8266WiFi.h>        // Wifi
+#include <ESP8266WiFiMulti.h>   // Include the Wi-Fi-Multi library
+#include <ESP8266WebServer.h>   // Include the WebServer library
+#include <ESP8266mDNS.h>        // Include the mDNS library
+#include <SPI.h>                // SPI communication for RFID
+#include <MFRC522.h>            // RFID library
+
+LiquidCrystal_I2C lcd(0x27, 16, 2); // Init LCD
+ESP8266WiFiMulti wifiMulti;         // Init wifi
+ESP8266WebServer server(80);        // Create an instance of the server
+
+const char* ssid = "Youcanforgetaboutit"; // Wifi name
+const char* server_password = "Anna1234"; // Wifi password
+
+// Pin constants
 const int lightSensorPin = A0;
-const int motionSensorIndoorPin = D0; // D0
-const int RST_PIN = D4;  // set Reset to digital pin D4
-const int SS_PIN = D8;   // set SDA to digital pin D8
+const int motionSensorIndoorPin = D0;
+const int RST_PIN = D4;  // Reset for RFID
+const int SS_PIN = D8;   // Data for RFID
 
+// Status constants for simplicity
 const int LOCKDOOR = 0;
 const int OPENDOOR = 1;
-const int KEYPAD_ON = 0;
+const int KEYPAD_RFID_ON = 0;
 const int RFID_ON = 1;
+const int KEYPAD_ON = 2;
 const int ALARM_ON = 1;
 const int ALARM_OFF = 0;
 const int LIGHT_ON = 1;
 const int LIGHT_OFF = 0;
-
-uint8_t keypad_RFID_select = 0;  // control variable to switch between RFID and keypad (1 fot RFID, 0 for keypad)
-uint8_t alarm_on_off = 0;              // control variable for the alarm (0 for off)
-
-
 const char INDOOR_LED = 'a';
 const char OUTDOOR_LED = 'b';
-const char SERVOCONTROL = 'c';  // Servo destination?
+const char SERVOCONTROL = 'c';
 const char ALARMCONTROL = 'd';
 
+// Initial states of control variables
+uint8_t keypad_RFID_select = KEYPAD_RFID_ON;
+uint8_t alarm_on_off = ALARM_OFF;
+int lockPosition = OPENDOOR;
+int lightThreshold = 160;         // Threshold is 240 normal indoor lighting
+int motionDetectedOutdoor = false; 
 
-int lightThreshold = 160;     //A threshold that controls when light level is low
-int lockPosition = OPENDOOR;  // position of the servo / lock
-int motionDetectedOutdoor = 0;
+// Communication arrays for I2C between master / slave
+char toSend[3] = { 0, 0 };
+char recieved[4] = { 0, 0 , 0};
 
+// Placeholders for recieved password from keypad
+char inputPassword[4] = { 0, 0, 0, 0 };
+char enteredPassword[4] = { inputPassword[0], inputPassword[1], inputPassword[2] }; // Constrains LCD print to 3 chars
 
-char toSend[3] = { 0, 0 };  // the char defining a command to send to slave
-char recieved[3] = { 0, 0 };
+// Variables for keypad - LCD
+int cursorPosition = 0; // Startpoistion for display printing
+char truePassword[4] = { '9', '1', '1', 0 }; // Correct password
 
-
-// variables for keypad - lcd
-char inputPassword[4] = { 0, 0, 0, 0 };  // placeholder for password.
-char enteredPassword[4] = { inputPassword[0], inputPassword[1], inputPassword[2] };
-int cursorPosition = 0;
-char truePassword[4] = { '9', '1', '1', 0 };
-int doClear = 0;
+// Variables for tracking when to clear display
+int doClear = 0; // 
 unsigned long timestamp;
 
-
-/* Variable text strings used in HTML code*/
+// Variable text strings used in HTML code
 String door_text = " Door is open";
 String RFID_text = " Keypad and RFID is active";
 String alarm_text = " Alarm is off";
@@ -68,10 +73,7 @@ String user2_text = " has accsess";
 String user3_text = " has accsess";
 String password_error_text = "";
 
-
-
-char password[4] = { 0, 0, 0 };  // Password for keypad
-/* Handle functions for the server*/
+// Handle functions for the server
 void handleRoot();
 void handleNotFound();
 void handle_door();
@@ -84,34 +86,39 @@ void handle_alarm();
 void handle_password();
 
 
-MFRC522 mfrc522(SS_PIN, RST_PIN);  //Define a new RFC reader
-MFRC522::MIFARE_Key key;           //Defines a new instanse of the MIFARE key
-MFRC522::StatusCode status;        //Defines an instanse of the status code
-//Matrix contaning ID's defined as valid
+MFRC522 mfrc522(SS_PIN, RST_PIN);  // Defines the RFID reader
+MFRC522::MIFARE_Key key;           // Defines instance of the MIFARE key
+MFRC522::StatusCode status;        // Defines an instance of the status code
+
+// Matrix containing RFID's defined as valid users
 byte validAccess[4][4] = {{0x63, 0xC8, 0xA0, 0x34},
                           {0xB9, 0xE1, 0x6C, 0x14},
                           {0x53, 0xB2, 0x05, 0x34}};
-byte userAccess[4] = {1, 1, 1};  // users who have access        
+byte userAccess[4] = {1, 1, 1};  // Users who have access
+// Variables for RFID access check and name printing
 bool access;
 char name[18];
 
+
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(115200); //############################################################################################################
   delay(10);
 
-  Wire.begin(D2, D1);  // SDA, SCL
+  Wire.begin(D2, D1);  // SDA & SCL for the I2C master / slave communication
 
-  pinMode(lightSensorPin, INPUT_PULLUP);  // light sensor
+  // Pin setup
+  pinMode(lightSensorPin, INPUT_PULLUP);
   pinMode(motionSensorIndoorPin, INPUT);
 
-  // init LCD
+  // Initialize LCD
   lcd.init();
   lcd.backlight();
   lcd.clear();
   lcd.setCursor(0, 0);            
   lcd.print("Enter password: ");
 
-  delay(10);
+  delay(10); //############################################################################################################
+  // Server post-requests 
   server.on("/LOCK_DOOR", HTTP_POST, handle_door);
   server.on("/RFID", HTTP_POST, handle_RFID_keypad);
   server.on("/User1", HTTP_POST, handle_user1);
@@ -120,55 +127,53 @@ void setup() {
   server.on("/AllUsers", HTTP_POST, handle_all_users);
   server.on("/ALARMON", HTTP_POST, handle_alarm);
   server.on("/PASSWORD", HTTP_POST, handle_password);
-
   init_sever_connection();
 
+  // Setup and initialize RFID reader
   SPI.begin();
-  mfrc522.PCD_Init();  //Setup and initialize RFID reader
-  //Prepare the keys for authentication
+  mfrc522.PCD_Init();
+
+  // Setup the keys for memory authentication
   for (int i = 0; i < 6; i++) {
     key.keyByte[i] = 0xFF;
   }
 }
 
+
 void loop() {
-
-  server.handleClient();
-
-  char toSend[3] = { 0, 0 };
-
-  // Check lighting
-  lightsystemIndoor(lockPosition);
-  lightsystemOutdoor();
-
-  motionAlarm(lockPosition);
-
-  getMessage();
-
-  if (keypad_RFID_select < 2) { // RFID is selecet
-    readID(&access, &name[0]);
-  }
-  
-
-  if ((doClear == 1) && (timestamp + 2000 < millis())) {  // check if clear is needed
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Enter password: ");
-    doClear = 0;
-  }
+  char toSend[3] = { 0, 0 }; // Resets message to slave ###################################################################
+  server.handleClient();              // Updates server
+  lightsystemIndoor(lockPosition);    // Controls indoor lighting if door is opened
+  lightsystemOutdoor();               // Controls outdoor lighting 
+  motionAlarm(lockPosition);          // Activates alarm if indoor motion is detected
+  getMessage();                       // Requests info from slave to control keypad and outdoor motionsensor
+  checkRFID();                        // Activates RFID if selected
+  clearDisplay();                     // Clears display 2s after a message is displayed
 }
 
-
-void sendMessage(char toSend[]) {  // transmit command to slave
-  Wire.beginTransmission(11);
-  Wire.write(toSend);
+/*
+// Transmit command to slave
+void sendMessage(char toSend[]) { 
+  Wire.beginTransmission(11);         // Opens I2C link to slave with ID 11
+  Wire.write(toSend);                 // Sends command to slave
   Wire.endTransmission();
 }
 
+// Compiles command to slave
 void slaveControlWord(char component, int stateValue) {
   toSend[0] = component;
-  toSend[1] = stateValue;  // Lock the servo
+  toSend[1] = stateValue;
   sendMessage(toSend);
+}
+*/
+
+// Compiles and transmits command to slave
+void slaveControlWord(char component, int stateValue) {
+  toSend[0] = component;
+  toSend[1] = stateValue;
+  Wire.beginTransmission(11);         // Opens I2C link to slave with ID 11
+  Wire.write(toSend);                 // Sends command to slave
+  Wire.endTransmission();
 }
 
 void getMessage() {
@@ -236,6 +241,21 @@ void getMessage() {
         lcd.print(enteredPassword);
       }
     }
+  }
+}
+
+void checkRFID() {
+  if (keypad_RFID_select < 2) {       // RFID is
+    readID(&access, &name[0]);
+  }
+}
+
+void clearDisplay() {
+  if ((doClear == 1) && (timestamp + 2000 < millis())) {  // check if clear is needed
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Enter password: ");
+    doClear = 0;
   }
 }
 
@@ -310,15 +330,15 @@ void handle_door() {   // If a POST request is made to URI /LED
 }
 
 void handle_RFID_keypad() {  // If a POST request is made to URI /LED
-  if (keypad_RFID_select == 0) {
+  if (keypad_RFID_select == KEYPAD_RFID_ON) {
     RFID_text = " RFID is active";
-    keypad_RFID_select = 1;
-  } else if (keypad_RFID_select == 1) {
+    keypad_RFID_select = RFID_ON;
+  } else if (keypad_RFID_select == RFID_ON) {
     RFID_text = " Keypad is active";
-    keypad_RFID_select = 2;
+    keypad_RFID_select = KEYPAD_ON;
   } else {
     RFID_text = " Keypad and RFID is active";
-    keypad_RFID_select = 0;
+    keypad_RFID_select = KEYPAD_RFID_ON;
   }
   server_update_header();
 }
