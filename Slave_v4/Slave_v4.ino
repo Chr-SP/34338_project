@@ -5,6 +5,7 @@
 
 Servo myservo;
 
+const int SLAVE = 11;
 const int IndoorLEDPin = 5; //PVM
 const int OutdoorLEDPin = 4; //
 const int ServoMoterPin = 3; //
@@ -50,7 +51,7 @@ int tone_select = 0;
 
 void setup() {
   Serial.begin(115200);
-  Wire.begin(11);
+  Wire.begin(SLAVE);
   Wire.onReceive(reader);
   Wire.onRequest(request);
 
