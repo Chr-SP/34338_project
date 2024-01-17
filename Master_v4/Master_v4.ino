@@ -3,7 +3,7 @@
 
 */
 
-#include <Wire.h>               // I2C for master / slave communication
+#include <Wire.h>               // I2C for master/slave communication
 #include <LiquidCrystal_I2C.h>  // LCD library
 #include <WiFiClient.h>         // Wifi
 #include <ESP8266WiFi.h>        // Wifi
@@ -13,21 +13,23 @@
 #include <SPI.h>                // SPI communication for RFID
 #include <MFRC522.h>            // RFID library
 
-LiquidCrystal_I2C lcd(0x27, 16, 2); // Init LCD
-ESP8266WiFiMulti wifiMulti;         // Init wifi
+LiquidCrystal_I2C lcd(0x27, 16, 2); // Initialize LCD
+ESP8266WiFiMulti wifiMulti;         // Initialize wifi
 ESP8266WebServer server(80);        // Create an instance of the server
 
-const char* ssid = "ChristianPhone"; // Wifi name
-const char* server_password = "34338Christian"; // Wifi password
+const char* ssid = "ChristianPhone";              // Wifi name
+const char* server_password = "34338Christian";   // Wifi password
 
 // Pin constants
 const int LIGHTSENSORPIN = A0;
 const int MOTIONSENSORINDOORPIN = D0; 
-const int RST_PIN = D4;  // Reset for RFID
-const int SS_PIN = D8;   // Data for RFID
+const int RST_PIN = D4;                           // Reset for RFID
+const int SS_PIN = D8;                            // Data for RFID
+
+// The number/address of the slave
+const int SLAVE = 11;
 
 // Status constants for simplicity
-const int SLAVE = 11;
 const int LOCKDOOR = 1;
 const int OPENDOOR = 0;
 const int KEYPAD_RFID_ON = 0;
@@ -47,9 +49,9 @@ const char KEYPADCONTROL = 'k';
 uint8_t keypad_RFID_select = KEYPAD_RFID_ON;
 uint8_t alarm_on_off = ALARM_OFF;
 int lockPosition = OPENDOOR;
-int lightThreshold = 160;         // Threshold is 240 normal indoor lighting
+int lightThreshold = 160;                         // Threshold is 240 normal indoor lighting
 
-// Communication arrays for I2C between master / slave
+// Communication arrays for I2C between master/slave
 char toSend[3] = { 0, 0 };
 char recieved[4] = { 0, 0, 0};
 
@@ -102,10 +104,10 @@ char name[18];
 
 
 void setup() {
-  Serial.begin(115200); //############################################################################################################
+  Serial.begin(115200); // Initialize serial monitor for webpage server IP
   delay(10);
 
-  Wire.begin(D2, D1);  // SDA & SCL for the I2C master / slave communication
+  Wire.begin(D2, D1);  // SDA & SCL for the I2C master/slave communication
 
   // Pin setup
   pinMode(LIGHTSENSORPIN, INPUT_PULLUP);
