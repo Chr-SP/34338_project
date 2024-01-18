@@ -17,8 +17,8 @@ LiquidCrystal_I2C lcd(0x27, 16, 2); // Initialize LCD
 ESP8266WiFiMulti wifiMulti;         // Initialize wifi
 ESP8266WebServer server(80);        // Create an instance of the server
 
-const char* ssid = "ChristianPhone";              // Wifi name
-const char* server_password = "34338Christian";   // Wifi password
+const char* ssid = "Malthes_Laptop";              // Wifi name
+const char* server_password = "34338Malthe";   // Wifi password
 
 // Pin constants
 const int LIGHTSENSORPIN = A0;
@@ -144,6 +144,8 @@ void setup() {
 
 
 void loop() {
+  Serial.println(lockPosition);
+
   char toSend[3] = { 0, 0 }; // Resets message to slave ###################################################################
   server.handleClient();              // Updates server
   lightsystemIndoor();    // Controls indoor lighting if door is opened
@@ -191,9 +193,16 @@ void keypad() {
       } else if (recieved[1] == '#') {                        // Click # to check if password is correct
         if (cursorPosition == 3) {                            
           if (memcmp(inputPassword, truePassword, 4) == 0) {  // Correct password entered
-            lcd.setCursor(0, 1);
-            lcd.print("Welcome home ");
             handle_door();                                    // Unlocks/Locks door
+            lcd.setCursor(0, 1);
+            if (lockPosition == OPENDOOR){
+              lcd.print("Welcome home ");                     // "Welcome home" when unlocking
+              lcd.print(name);
+            }
+            else{
+              lcd.print("Goodbye ");                          // "Goodbye" when locking
+              lcd.print(name);
+            }
           } else {                                            // Wrong password entered
             lcd.setCursor(0, 1);
             lcd.print("Wrong password");
@@ -310,12 +319,12 @@ void server_update_header() {
 
 // Unlocks/Locks door
 void handle_door() {
-  if (lockPosition) {
-    slaveControlWord(SERVOCONTROL, LOCKDOOR);
-    door_text = " Door is locked";
-  } else {
+  if (lockPosition) {                 // If the door is locked: open
     slaveControlWord(SERVOCONTROL, OPENDOOR);
     door_text = " Door is open";
+  } else {                            // If the door is open: lock
+    slaveControlWord(SERVOCONTROL, LOCKDOOR);
+    door_text = " Door is locked";
   }
   lockPosition = !lockPosition;
   server_update_header();
@@ -485,10 +494,16 @@ void readKey(bool* a, char* n) {
   // If key has access read data, print data and change door state
   if (access == true) { 
     readDataFromKey(n);
-    lcd.setCursor(0, 1);
-    lcd.print("Welcome home ");
-    lcd.print(name);
     handle_door();
+    lcd.setCursor(0, 1);
+    if (lockPosition == OPENDOOR){
+      lcd.print("Welcome home ");
+      lcd.print(name);
+    }
+    else{
+      lcd.print("Goodbye ");
+      lcd.print(name);
+    }
     doClear = 1;
     timestamp = millis();
   }
