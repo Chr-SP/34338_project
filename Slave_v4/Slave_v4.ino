@@ -1,6 +1,5 @@
 /*
-
-
+THIS IS THE SKETCH FOR THE ARDUINO UNO SLAVE IN "SMART HOME SECURITY SYSTEM" PROJECT BY GROUP 3 - COURSE NO: 34338
 */
 
 #include <Wire.h>     // I2C for master/slave communication

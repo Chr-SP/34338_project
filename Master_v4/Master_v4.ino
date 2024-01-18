@@ -1,6 +1,5 @@
 /*
-
-
+THIS IS THE SKETCH FOR THE ESP8266 MASTER IN "SMART HOME SECURITY SYSTEM" PROJECT BY GROUP 3 - COURSE NO: 34338
 */
 
 #include <Wire.h>               // I2C for master/slave communication
@@ -105,6 +104,7 @@ char name[18];
 
 void setup() {
   Serial.begin(115200); // Initialize serial monitor for webpage server IP
+  
   delay(10);
 
   Wire.begin(D2, D1);  // SDA & SCL for the I2C master/slave communication
@@ -120,7 +120,8 @@ void setup() {
   lcd.setCursor(0, 0);            
   lcd.print("Enter password: ");
 
-  delay(10); //############################################################################################################
+  delay(10);
+
   // Server post-requests 
   server.on("/LOCK_DOOR", HTTP_POST, handle_door);
   server.on("/RFID", HTTP_POST, handle_RFID_keypad);
@@ -144,11 +145,11 @@ void setup() {
 
 
 void loop() {
-  char toSend[3] = { 0, 0 }; // Resets message to slave ###################################################################
+  char toSend[3] = { 0, 0 };          // Resets message to slave
   server.handleClient();              // Updates server
-  lightsystemIndoor();    // Controls indoor lighting if door is opened
+  lightsystemIndoor();                // Controls indoor lighting if door is opened
   lightsystemOutdoor();               // Controls outdoor lighting 
-  motionAlarm();          // Activates alarm if indoor motion is detected
+  motionAlarm();                      // Activates alarm if indoor motion is detected
   getMessage();                       // Requests data from slave to keypad and outdoor motionsensor
   keypad();                           // Controls keypad and LCD
   checkRFID();                        // Activates RFID if selected
@@ -421,7 +422,7 @@ void handle_password() {
     password_error_text = "Password change successful";
     server_update_header();
   }
-  else {                                                                  //#############################################################s
+  else {                                                                  
     password_error_text = "Unauthorized ";
     server_update_header();
   }
@@ -505,8 +506,7 @@ void readKey(bool* a, char* n) {
   }
 
   mfrc522.PICC_HaltA();       // Prevents redetection of a card
-
-  mfrc522.PCD_StopCrypto1();  //################################################################################
+  mfrc522.PCD_StopCrypto1();  // Stops encryption on PCD
 }
 
 // Checks all stored card numbers with UID, if there is a match return acces granted as true
