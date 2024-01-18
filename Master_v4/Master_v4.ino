@@ -144,8 +144,6 @@ void setup() {
 
 
 void loop() {
-  Serial.println(lockPosition);
-
   char toSend[3] = { 0, 0 }; // Resets message to slave ###################################################################
   server.handleClient();              // Updates server
   lightsystemIndoor();    // Controls indoor lighting if door is opened
@@ -197,11 +195,9 @@ void keypad() {
             lcd.setCursor(0, 1);
             if (lockPosition == OPENDOOR){
               lcd.print("Welcome home ");                     // "Welcome home" when unlocking
-              lcd.print(name);
             }
             else{
               lcd.print("Goodbye ");                          // "Goodbye" when locking
-              lcd.print(name);
             }
           } else {                                            // Wrong password entered
             lcd.setCursor(0, 1);
@@ -313,16 +309,16 @@ void handleRoot() {
 
 // Updates webpage (called within all handle functions to refresh webpage)
 void server_update_header() {
-  server.sendHeader("Location", "/");  // Add a header to respond with a new location for the browser to go to the home page again
-  server.send(303);                    // Send it back to the browser with an HTTP status 303
+  server.sendHeader("Location", "/");   // Add a header to respond with a new location for the browser to go to the home page again
+  server.send(303);                     // Send it back to the browser with an HTTP status 303
 }
 
 // Unlocks/Locks door
 void handle_door() {
-  if (lockPosition) {                 // If the door is locked: open
+  if (lockPosition) {                   // If the door is locked: open
     slaveControlWord(SERVOCONTROL, OPENDOOR);
     door_text = " Door is open";
-  } else {                            // If the door is open: lock
+  } else {                              // If the door is open: lock
     slaveControlWord(SERVOCONTROL, LOCKDOOR);
     door_text = " Door is locked";
   }

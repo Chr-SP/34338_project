@@ -19,7 +19,6 @@ MFRC522::StatusCode status; //Defines an instanse of the status code
 
 //Matrix contaning ID's defined as valid
 byte validAccess[4][4] = {{0x63, 0xC8, 0xA0, 0x34},
-                          {0xF9, 0xAD, 0xD8, 0x15},
                           {0xB9, 0xE1, 0x6C, 0x14},
                           {0x53, 0xB2, 0x05, 0x34}};
 
@@ -40,7 +39,7 @@ void setup() {
 }
 
 void loop() {
-  //writeDataToKey("MP");
+  //writeDataToKey("AV");
   readID(&access, &name[0]);
 
 }
