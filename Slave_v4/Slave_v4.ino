@@ -19,7 +19,7 @@ const int OUTDOORLEDPIN = 4;
 const int SERVOMOTORPIN = 3;
 const int MOTIONSENSOROUTDOORPIN = A2;
 const int BUZZERPIN = 2;
-const int REDLED = 13;
+const int ALARMLED = 13;
 // Defining 7 pin numberes for the keypad - keypad is inspired by https://projecthub.arduino.cc/mckean0/keypad-entry-lock-2d9999#
 const int R1 = 12;  //#define R1 12
 const int R2 = 11;  //#define R2 11
@@ -94,7 +94,7 @@ void setup() {
   pinMode(C2, INPUT);
   pinMode(C3, INPUT);
   pinMode(BUZZERPIN, OUTPUT);
-  pinMode(REDLED, OUTPUT);
+  pinMode(ALARMLED, OUTPUT);
 
   // Initialize servo and turn to start position (OPENDOOR)
   myservo.attach(SERVOMOTORPIN);
@@ -172,7 +172,7 @@ void alarmChange(int on_off){
   } else{
     alarm_on_off = ALARM_OFF;
     noTone(BUZZERPIN);
-    digitalWrite(REDLED, LOW);
+    digitalWrite(ALARMLED, LOW);
   }
 }
 
@@ -181,7 +181,7 @@ void alarm(){
   if (alarm_on_off == ALARM_ON){
     if (timestamp + 200 < millis()){              // Change state of LED and tone of buzzer every 200ms
       alarm_led_intensity = !alarm_led_intensity;
-      digitalWrite(REDLED, alarm_led_intensity);
+      digitalWrite(ALARMLED, alarm_led_intensity);
       tone_select = !tone_select;
       tone(BUZZERPIN,tone_pitch[tone_select]);    // ########## OUTCOMMENT THIS LINE TO KEEP SANE WHEN TESTING ########## //
       timestamp = millis();
