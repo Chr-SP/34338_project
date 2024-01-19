@@ -48,7 +48,7 @@ const char KEYPADCONTROL = 'k';
 uint8_t keypad_RFID_select = KEYPAD_RFID_ON;
 uint8_t alarm_on_off = ALARM_OFF;
 int lockPosition = OPENDOOR;
-int lightThreshold = 160;                         // Threshold is 240 normal indoor lighting
+int lightThreshold = 200;                         // Threshold is 240 normal indoor lighting
 
 // Communication arrays for I2C between master/slave
 char toSend[3] = { 0, 0 };
